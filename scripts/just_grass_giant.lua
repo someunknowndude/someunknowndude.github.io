@@ -1,6 +1,6 @@
 -- just grass giant by quirky anime boy#5506
 
--- check out my website/discord server at skyr3x.tk
+-- check out my website/discord server at 🤡🤡🤡🤡🤡🤡🤡.tk
 
 local reps = "4602533885,"
 
@@ -163,6 +163,7 @@ for i,v in pairs(char:GetChildren()) do
         table.insert(bighats,v)
         v.Handle.SpecialMesh:Destroy()
     elseif v:IsA("Accessory") and v.Handle.Size ~= Vector3.new(6,6,6) and v.Name ~= "Smile" then
+        v.Handle:BreakJoints()
         v:Destroy()
     end
 end
@@ -202,6 +203,11 @@ anim.Disabled = true
 anim.Disabled = false
 wait(.3)
 plr.Character.HumanoidRootPart.CFrame = oldpos + Vector3.new(0,6,0)
+
+for i,v in pairs(bighats) do
+    v.Handle.CFrame = plr.Character.HumanoidRootPart.CFrame
+end
+smile.Handle.CFrame = plr.Character.HumanoidRootPart.CFrame 
 
 local reset = Instance.new("BindableEvent")
 ti(cons,reset.Event:Connect(function()

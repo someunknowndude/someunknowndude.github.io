@@ -13,7 +13,7 @@ repped = repped:sub(1,-2)
 local done = base .. repped
 
 --game.Players:Chat(done) -- get hats needed
-setclipboard(done)
+if setclipboard then setclipboard(done) else print(done) end
 repeat wait() until game.Players.LocalPlayer.Character:FindFirstChild("Smile")
 wait(.8)
 local plr = game.Players.LocalPlayer

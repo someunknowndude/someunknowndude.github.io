@@ -12,12 +12,12 @@ repped = repped:sub(1,-2)
 
 local done = base .. repped
 
-game.Players:Chat(done) -- get hats needed
-
+--game.Players:Chat(done) -- get hats needed
+setclipboard(done)
+repeat wait() until game.Players.LocalPlayer.Character:FindFirstChild("Smile")
 wait(.8)
-
 local plr = game.Players.LocalPlayer
-local char = game.Players.LocalPlayer.Character
+local char = plr.Character
 local cons = {}
 local ti = table.insert
 local rs = game:GetService("RunService")

@@ -1,19 +1,7 @@
 -- just grass giant by quirky anime boy#5506
 
--- check out my website/discord server at 🤡🤡🤡🤡🤡🤡🤡.tk
+-- check out my website/discord server at https://xn--9p9haaaaaa.tk/
 
-local reps = "4602533885,"
-
-local repped = reps:rep(13)
-
-local base = "-gh 6202063049,"
-
-repped = repped:sub(1,-2)
-
-local done = base .. repped
-
---game.Players:Chat(done) -- get hats needed
-if setclipboard then setclipboard(done) else print(done) end
 repeat wait() until game.Players.LocalPlayer.Character:FindFirstChild("Smile")
 wait(.8)
 local plr = game.Players.LocalPlayer

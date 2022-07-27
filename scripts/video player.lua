@@ -67,6 +67,6 @@ sec2:Box("custom credits","string",function(t)
     if t ~= "" and t ~= nil then
         credits = t
     else
-        credits = "Made by quirky anime boy#5506 | https://dsc.lol/nilhub |"
+        credits = "Made by quirky anime boy#5506 | https://dsc.gg/nilhub |"
     end
 end)

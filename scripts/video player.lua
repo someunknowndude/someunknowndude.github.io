@@ -3,7 +3,7 @@ local videoPath = "/output"
 local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/TheJoaqun/UI-Librarys/UI-Library/UI%20Librarys%20Loadstring/WallyV3.lua"))()
 local window = library:CreateWindow("console video player")
 
-local credits = "     quirky anime boy#5506 | https://dsc.lol/nilhub |"
+local credits = "     quirky anime boy#5506 | https://dsc.gg/nilhub |"
 local delay = 0.03
 local lp = game.Players.LocalPlayer
 

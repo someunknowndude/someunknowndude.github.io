@@ -201,6 +201,15 @@ local cc;cc = plr.Chatted:Connect(function(msg)
         target.Character.Humanoid.PlatformStand = true
         firetouchinterest(target.Character.Humanoid.RootPart,tool.Handle,0)
         firetouchinterest(target.Character.Humanoid.RootPart,tool.Handle,0)
+    elseif spaceSplit[1] == "/carry" then
+        local target = getPlr(tostring(spaceSplit[2]):lower())
+        local tool = getBp():FindFirstChildOfClass("Tool") or getChar():FindFirstChildOfClass("Tool")
+        if target == nil or tool == nil then return end
+        tool.Handle.CanCollide = false
+        attachTool(tool,CFrame.new(1.5,-3,1) * CFrame.Angles(math.rad(-90),0,0))
+        target.Character.Humanoid.PlatformStand = true
+        firetouchinterest(target.Character.Humanoid.RootPart,tool.Handle,0)
+        firetouchinterest(target.Character.Humanoid.RootPart,tool.Handle,0)
     elseif spaceSplit[1] == "/void" or spaceSplit[1] == "/kill" then
         local target = getPlr(tostring(spaceSplit[2]):lower())
         local tool = getBp():FindFirstChildOfClass("Tool") or getChar():FindFirstChildOfClass("Tool")

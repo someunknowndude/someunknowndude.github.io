@@ -499,6 +499,7 @@ print([[
                        ooo OOO OOO ooo                 
                          Neutron Admin                 
                  Made by quirky anime boy#5506         
-            "Inspired" by Digitality's Proton Admin    
+            "Inspired" by Digitality's Proton Admin
+                       Say /cmds to begin    
      --------------------------------------------------
 ]])

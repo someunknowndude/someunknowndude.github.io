@@ -1,6 +1,6 @@
 local videoPath = "/output"
 
-local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/TheJoaqun/UI-Librarys/UI-Library/UI%20Librarys%20Loadstring/WallyV3.lua"))()
+local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/bloodball/-back-ups-for-libs/main/wall%20v3"))()
 local window = library:CreateWindow("console video player")
 
 local credits = "     quirky anime boy#5506 | https://dsc.gg/nilhub |"

@@ -1,5 +1,6 @@
 if not isfolder("generatedImages") then makefolder("generatedImages") end
 local getasset = getsynasset or getcustomasset or error("not supported")
+local hreq = (syn and syn.request) or (http and http.request) or request or error("not supported")
 local base64 = {} do -- idk who made this
 	local b='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
 	
@@ -33,7 +34,7 @@ local base64 = {} do -- idk who made this
 end
 
 local function generateImages(prompt)
-    local req = syn.request({
+    local req = hreq({
         Url = "https://backend.craiyon.com/generate",
         Method = "POST",
         Headers = {
@@ -49,12 +50,12 @@ local function generateImages(prompt)
 end
 local function getAssetId(imgdata)
     local data = base64.decode(imgdata)
-    local rng = tostring(math.random(1,10000))
+    local rng = game:GetService("HttpService"):GenerateGUID()
     local filename = "/generatedImages/generated" .. rng .. ".jpeg"
     writefile(filename,data)
     local id = getasset(filename)
     spawn(function()
-        task.wait(1)
+        task.wait(5) -- deletes the image after 5 seconds, trying to load the image in after this timespan wont work
         delfile(filename)
     end)
     return id

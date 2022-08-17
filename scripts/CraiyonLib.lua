@@ -55,7 +55,7 @@ local function getAssetId(imgdata)
     writefile(filename,data)
     local id = getasset(filename)
     spawn(function()
-        task.wait(5) -- deletes the image after 5 seconds, trying to load the image in after this timespan wont work
+        task.wait(3) -- deletes the image after 3 seconds, trying to load the image in after this timespan wont work
         delfile(filename)
     end)
     return id

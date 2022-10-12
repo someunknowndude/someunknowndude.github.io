@@ -9,7 +9,17 @@
 
     <audio loop src="faded.mp3" id="audio"></audio>
         <script>
-        document.getElementById("audio").play()
+              var has_init = false
+              function audio_init() {
+                if (has_init) return
+                  has_init = true
+                  document.getElementById("audio").play()
+              }
+
+              audio_init()
+              window.onclick = () => {
+               audio_init()
+              }
         </script>
 </body>
 </html>

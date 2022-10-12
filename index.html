@@ -6,10 +6,11 @@
 </a>
 <img src="https://thiscatdoesnotexist.com/">
 <iframe src="https://discord.com/widget?id=974000140417396766&theme=dark" width="350" height="500" allowtransparency="true" frameborder="0" sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"></iframe>
-<iframe src="faded.mp3" type="audio/mp3" allow="autoplay" id="audio" style="display:none"></iframe>
-<audio autoplay>
-    <source src="silence.mp3" type="audio/mp3">
-</audio>
-</audio>
+
+    <audio loop src="faded.mp3" id="audio"></audio>
+        <script>
+            var audio = document.getElementById("audio");// audio.volume = 0.075;
+            audio.play()
+        </script>
 </body>
 </html>

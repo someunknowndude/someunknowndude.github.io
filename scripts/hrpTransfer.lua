@@ -145,6 +145,7 @@ game:GetService("UserInputService").InputBegan:Connect(function(obj,proc)
 		local hit = lp:GetMouse().Hit
 		local tempPart = spawnPart(hit.Position - Vector3.new(0,1,0))
 		placePart(hit.Position + Vector3.new(0,0.5,0))
+		tempPart:Destroy()
 	end
 end)
 

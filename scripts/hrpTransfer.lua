@@ -112,8 +112,8 @@ local function placePart(partPosition)
 	if debounce then return end
 	debounce = true
 	startStream()
-	noclipToggle = true
 	for i = 1,50 do
+		noclipToggle = true
 		position(partPosition,0.01)
 	end
 	noclipToggle = false

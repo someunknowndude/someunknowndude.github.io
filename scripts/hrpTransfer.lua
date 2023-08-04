@@ -115,11 +115,6 @@ local function placePart(partPosition)
 	startStream()
 	for i = 1,50 do
 		noclipToggle = true
-		if i%20 == 0 then
-			lphrp.Anchored = true
-		elseif i%40 == 0 then
-			lphrp.Anchored = false
-		end
 		position(partPosition,0.01)
 	end
 	noclipToggle = false

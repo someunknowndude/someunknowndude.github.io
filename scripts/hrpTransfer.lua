@@ -28,6 +28,7 @@ local function spawnPart(partPos)
 	part.Anchored = true
 	part.Position = partPos
 	part.Parent = partsFolder
+	return part
 end
 
 local function listen(char)
@@ -141,7 +142,9 @@ end))
 game:GetService("UserInputService").InputBegan:Connect(function(obj,proc)
 	if obj.KeyCode == Enum.KeyCode.E and not proc then
 		print("E pressed")
-		placePart(lp:GetMouse().Hit.Position + Vector3.new(0,0.5,0))
+		local hit = lp:GetMouse().Hit
+		local tempPart = spawnPart(hit.Position - Vector3.new(0,1,0))
+		placePart(hit.Position + Vector3.new(0,0.5,0))
 	end
 end)
 

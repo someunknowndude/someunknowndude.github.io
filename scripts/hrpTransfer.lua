@@ -95,14 +95,28 @@ local function endStream()
 	lphum.PlatformStand = false
 end
 
+local noclipToggle = false
+local noclipLoop
+noclipLoop = game.RunService.Stepped:Connect(function()
+	if noclipToggle and lp.Character then
+		for i,v in pairs(lp.Character:GetChildren()) do
+			if v:IsA("BasePart") then
+				v.CanCollide = false
+			end
+		end
+	end
+end)
+
 local debounce = false
 local function placePart(partPosition)
 	if debounce then return end
 	debounce = true
 	startStream()
+	noclipToggle = true
 	for i = 1,50 do
 		position(partPosition,0.01)
 	end
+	noclipToggle = false
 	endStream()
 	debounce = false
 end

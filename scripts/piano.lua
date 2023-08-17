@@ -1,5 +1,5 @@
 -- FE Piano by quirky anime boy (Discord: smokedoutlocedout)
--- make sure you have at least 6 boomboxes
+-- make sure you have at least 6 boomboxes and arent in shiftlock
 
 local settings = {
 	DisableSheetPage = true, 	-- disables the built-in sheet music button/keybind
@@ -13,6 +13,7 @@ if game:GetService("SoundService").RespectFilteringEnabled then return end -- ti
 if settings.DisableZoomKeys then
 	game:GetService("ContextActionService"):BindActionAtPriority("do nothing", function() return Enum.ContextActionResult.Sink end, false, 3000, Enum.KeyCode.I, Enum.KeyCode.O)
 end
+
 
 local PianoGui = game:GetObjects("rbxassetid://11319793375")[1].PianoGui
 local script = PianoGui.Main
@@ -527,11 +528,14 @@ ScriptReady = true
 Activate()
 Player.Character.Humanoid.Died:Connect(Deactivate)
 if settings.LoadMidiPlayer then
+	print("setting enabled")
 	MidiGui = game:GetService("CoreGui"):FindFirstChild("ScreenGui")
 	if not MidiGui then
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/richie0866/MidiPlayer/main/package.lua"))()
 		MidiGui = game:GetService("CoreGui"):WaitForChild("ScreenGui")
+		print("no gui found, creating new one")
 	else
 		MidiGui.Enabled = true
+		print("enabling old gui")
 	end
 end

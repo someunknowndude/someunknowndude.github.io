@@ -1,9 +1,30 @@
-if game:GetService("SoundService").RespectFilteringEnabled then return error("cringe") end 
+-- FE Piano by quirky anime boy (Discord: smokedoutlocedout)
+-- make sure you have at least 6 boomboxes
 
-local Gui = game:GetObjects("rbxassetid://9663775341")[1]
-Gui.Parent = game.CoreGui
+local settings = {
+	AirSit = true, 				-- makes you sit in place for a better "piano" experience
+	DisableSheetPage = true, 	-- disables the built-in sheet music button/keybind
+	DisableZoomKeys = true, 	-- disables the I and O zoom keybinds
+	LoadMidiPlayer = true, 		-- loads  0866's midi autoplayer
+	AlternativeBoombox = false 	-- Removes the "PlaySong" argument from the RemoteEvent. Change this if no sounds are playing. 
+}
+
+if game:GetService("SoundService").RespectFilteringEnabled then return end -- timeposition and Stop cant be used
+
+if settings.DisableZoomKeys then
+	game:GetService("ContextActionService"):BindActionAtPriority("do nothing", function() return Enum.ContextActionResult.Sink end, false, 3000, Enum.KeyCode.I, Enum.KeyCode.O)
+end
+
+local PianoGui = game:GetObjects("rbxassetid://11319793375")[1].PianoGui
+local script = PianoGui.Main
+
+Gui = script.Parent
 Player = game.Players.LocalPlayer
+
+Gui.Parent = Player.PlayerGui
 PlayingEnabled = false
+
+ScriptReady = false
 
 ----------------------------------
 ----------------------------------
@@ -17,37 +38,21 @@ PlayingEnabled = false
 ------------VARIABLES-------------
 ----------------------------------
 
-Connector = Instance.new("RemoteEvent") --game.Workspace:FindFirstChild("GlobalPianoConnector")
+PianoId = nil
 
+local Transposition, Volume = script.Parent:WaitForChild("Transpose"), 1
 ----------------------------------
 ------------FUNCTIONS-------------
 ----------------------------------
 
-function Receive(action, ...)
-	local args = {...}
-	if action == "activate" then
-		if not PlayingEnabled then
-			Activate(args[1], args[2])
-		end
-	elseif action == "deactivate" then
-		if PlayingEnabled then
-			Deactivate()
-		end
-	elseif action == "play" then
-		if Player ~= args[1] then
-			PlayNoteServer(args[2], args[3], args[4], args[5])
-		end
-	end
-end
-function Activate(cameraCFrame, sounds)
+
+function Activate()
 	PlayingEnabled = true
-	MakeHumanoidConnections()
 	MakeKeyboardConnections()
 	MakeGuiConnections()
-	SetCamera(cameraCFrame)
-	SetSounds(sounds)
 	ShowPiano()
 end
+
 function Deactivate()
 	PlayingEnabled = false
 	BreakHumanoidConnections()
@@ -55,28 +60,24 @@ function Deactivate()
 	BreakGuiConnections()
 	HidePiano()
 	HideSheets()
-	ReturnCamera()	
-	Jump()
+	for i,v in pairs(Player.Character:GetChildren()) do
+		if v:IsA("Tool") then
+			v.Handle.Sound:Stop()
+		end
+	end
 end
 function PlayNoteClient(note)
-	PlayNoteSound(note)
-	HighlightPianoKey(note)
-
-	--Connector:FireServer("play", note)
-end
-function PlayNoteServer(note, point, range)
-	PlayNoteSound(note, point, range)
-end
-function Abort()
-	Connector:FireServer("abort")
+		PlayNoteSound(note)
+		HighlightPianoKey(note)
 end
 
-----------------------------------
------------CONNECTIONS------------
-----------------------------------
 
---Connector.OnClientEvent:connect(Receive)
---Receive("play","a",2,10,10)
+function Transpose(value)
+	Transposition.Value = Transposition.Value + value
+	
+	PianoGui.TransposeLabel.Text = "Transposition: " .. Transposition.Value
+end
+
 
 ----------------------------------
 ----------------------------------
@@ -100,42 +101,44 @@ ShiftLock = false
 ------------FUNCTIONS-------------
 ----------------------------------
 
-function LetterToNote(key, shift)
-	local letterNoteMap = "1!2@34$5%6^78*9(0qQwWeErtTyYuiIoOpPasSdDfgGhHjJklLzZxcCvVbBnm"
-	local capitalNumberMap = ")!@#$%^&*("
-	local letter = string.char(key)
-	if shift then
-		if tonumber(letter) then
-			-- is a number
-			letter = string.sub(capitalNumberMap, tonumber(letter) + 1, tonumber(letter) + 1)
-		else
-			letter = string.upper(letter)
-		end
-	end
-	local note = string.find(letterNoteMap, letter, 1, true)
+letterNoteMap = "1!2@34$5%6^78*9(0qQwWeErtTyYuiIoOpPasSdDfgGhHjJklLzZxcCvVbBnm"
+function LetterToNote(key, shift, ctrl)
+	local note = letterNoteMap:find(string.char(key), 1, true)
 	if note then
-		return note
+		return note + Transposition.Value + (shift and 1 or ctrl and -1 or 0)
 	end
 end
 
 function KeyDown(Object)
-	
-	if TextBoxFocused then return end
+	if TextBoxFocused then
+		return
+	end
 	local key = Object.KeyCode.Value
-	local shift = (InputService:IsKeyDown(303) or InputService:IsKeyDown(304)) == not ShiftLock
-	if (key >= 97 and key <= 122) or  (key >= 48 and key <= 57) then
-		-- a letter was pressed
-		local note = LetterToNote(key, shift)
-		if note then PlayNoteClient(note) end
-	elseif key == 8 then
-		-- backspace was pressed
-		Deactivate()
+	if key >= 97 and key <= 122 or key >= 48 and key <= 57 then
+		local note = LetterToNote(key, (InputService:IsKeyDown(303) or InputService:IsKeyDown(304)) ~= ShiftLock, InputService:IsKeyDown(305) or InputService:IsKeyDown(306))
+		if note then
+			do
+				local conn
+				conn = InputService.InputEnded:connect(function(obj)
+					if obj.KeyCode.Value == key then
+						conn:disconnect()
+					end
+				end)
+				PlayNoteClient(note)
+			end
+		else
+			PlayNoteClient(note)
+		end
 	elseif key == 32 then
-		-- space was pressed
 		ToggleSheets()
-	elseif key == 13 then
-		-- return was pressed
+	elseif key == 301 then
 		ToggleCaps()
+	elseif key == 13 then
+		ToggleCaps()
+	elseif key == 274 then
+		Transpose(-1)
+	elseif key == 273 then
+		Transpose(1)
 	end
 end
 
@@ -166,7 +169,6 @@ end
 ----------------------------------
 
 KeyboardConnection = nil
-JumpConnection = nil
 FocusConnection = InputService.TextBoxFocused:connect(TextFocus) --always needs to be connected
 UnfocusConnection = InputService.TextBoxFocusReleased:connect(TextUnfocus)
 
@@ -195,6 +197,7 @@ end
 PianoGui = Gui.PianoGui
 SheetsGui = Gui.SheetsGui
 SheetsVisible = false
+MidiGui = nil
 
 ----------------------------------
 ------------FUNCTIONS-------------
@@ -202,7 +205,7 @@ SheetsVisible = false
 
 function ShowPiano()
 	PianoGui:TweenPosition(
-		UDim2.new(0.5, -380, 1, -220),
+		UDim2.new(0.481, -355, 0.68, 0),
 		Enum.EasingDirection.Out,
 		Enum.EasingStyle.Sine,
 		.5,
@@ -211,16 +214,20 @@ function ShowPiano()
 end
 function HidePiano()
 	PianoGui:TweenPosition(
-		UDim2.new(0.5, -380, 1, 0),
+		UDim2.new(0.481, -355, 1, 1),
 		Enum.EasingDirection.Out,
 		Enum.EasingStyle.Sine,
 		.5,
-		true
+		true,
+		function()
+			Gui:Destroy()
+		end
 	)
+
 end
 function ShowSheets()
 	SheetsGui:TweenPosition(
-		UDim2.new(0.5, -200, 1, -520),
+		UDim2.new(0.492, -200, 1, -520),
 		Enum.EasingDirection.Out,
 		Enum.EasingStyle.Sine,
 		.5,
@@ -229,14 +236,16 @@ function ShowSheets()
 end
 function HideSheets()
 	SheetsGui:TweenPosition(
-		UDim2.new(0.5, -200, 1, 0),
+		UDim2.new(0.492, -200, 1, 1),
 		Enum.EasingDirection.Out,
 		Enum.EasingStyle.Sine,
 		.5,
 		true
 	)
 end
+
 function ToggleSheets()
+	if settings.DisableSheetPage then return end
 	SheetsVisible = not SheetsVisible
 	if SheetsVisible then
 		ShowSheets()
@@ -249,17 +258,25 @@ function IsBlack(note)
 	if note%12 == 2 or note%12 == 4 or note%12 == 7 or note%12 == 9 or note%12 == 11 then
 		return true
 	end
+	return
 end
 
+
 function HighlightPianoKey(note)
-	local keyGui = PianoGui.Keys[note]
-	if IsBlack(note) then
+	local x = (note > 61 and 61) or (note < 1 and 1);
+	local keyGui = PianoGui.Keys[x or note];
+	
+	if x then
+		keyGui.BackgroundColor3 = Color3.new(200/255, 50/255, 50/255)
+	elseif IsBlack(note) then
 		keyGui.BackgroundColor3 = Color3.new(50/255, 50/255, 50/255)
 	else
 		keyGui.BackgroundColor3 = Color3.new(200/255, 200/255, 200/255)
 	end
-	delay(.5, function() RestorePianoKey(note) end)
+	
+	delay(.5, function() RestorePianoKey(x or note) end)
 end
+
 function RestorePianoKey(note)
 	local keyGui = PianoGui.Keys[note]
 	if IsBlack(note) then
@@ -279,7 +296,11 @@ end
 function ExitButtonPressed(Object)
 	local type = Object.UserInputType.Name
 	if type == "MouseButton1" or type == "Touch" then
-		Deactivate()
+		PlayingEnabled = false
+		BreakKeyboardConnections()
+		BreakGuiConnections()
+		HidePiano()
+		HideSheets()
 	end
 end
 
@@ -290,24 +311,17 @@ function SheetsButtonPressed(Object)
 	end
 end
 
-function SheetsEdited(property)
-	if property == "Text" then
-		local bounds = SheetsGui.Sheet.ScrollingFrame.TextBox.TextBounds
-		SheetsGui.Sheet.ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, math.max(14, bounds.Y))
-	end
-end
-
 function ToggleCaps()
+	local capscheck = Gui.PianoGui.capscheck
 	ShiftLock = not ShiftLock
 	if ShiftLock then
-		PianoGui.CapsButton.BackgroundColor3 = Color3.new(1, 170/255, 0)
-		PianoGui.CapsButton.BorderColor3 = Color3.new(154/255, 103/255, 0)
-		PianoGui.CapsButton.TextColor3 = Color3.new(1, 1, 1)
+		PianoGui.CapsButton.buttonXD.ImageColor3 = Color3.fromRGB(49, 189, 245)
+		capscheck.Text = "Caps: On"
 	else
-		PianoGui.CapsButton.BackgroundColor3 = Color3.new(140/255, 140/255, 140/255)
-		PianoGui.CapsButton.BorderColor3 = Color3.new(68/255, 68/255, 68/255)
-		PianoGui.CapsButton.TextColor3 = Color3.new(180/255, 180/255, 180/255)
+		PianoGui.CapsButton.buttonXD.ImageColor3 = Color3.fromRGB(132, 132, 132)
+		capscheck.Text = "Caps: Off"
 	end
+	return
 end
 
 function CapsButtonPressed(Object)
@@ -315,17 +329,20 @@ function CapsButtonPressed(Object)
 	if type == "MouseButton1" or type == "Touch" then
 		ToggleCaps()
 	end
+	return
 end
+
 
 ----------------------------------
 -----------CONNECTIONS------------
 ----------------------------------
 
-PianoKeysConnections = {}
-ExitButtonConnection = nil
-SheetsButtonConnection = nil
-SheetsEditedConnection = nil
-CapsButtonConnection = nil
+PianoKeysConnections = {};
+ExitButtonConnection = nil;
+SheetsButtonConnection = nil;
+CapsButtonConnection = nil;
+TransDnConnection = nil;
+TransUpConnection = nil;
 
 function MakeGuiConnections()
 	for i, v in pairs(PianoGui.Keys:GetChildren()) do
@@ -334,18 +351,26 @@ function MakeGuiConnections()
 	
 	ExitButtonConnection = PianoGui.ExitButton.InputBegan:connect(ExitButtonPressed)
 	SheetsButtonConnection = PianoGui.SheetsButton.InputBegan:connect(SheetsButtonPressed)
-	SheetsEditedConnection = SheetsGui.Sheet.ScrollingFrame.TextBox.Changed:connect(SheetsEdited)
 	CapsButtonConnection = PianoGui.CapsButton.InputBegan:connect(CapsButtonPressed)
+	
+	TransDnConnection = PianoGui.TransDnButton.MouseButton1Click:connect(function()
+		Transpose(-1)
+	end)
+	
+	TransUpConnection = PianoGui.TransUpButton.MouseButton1Click:connect(function()
+		Transpose(1)
+	end)
 end
 function BreakGuiConnections()
 	for i, v in pairs(PianoKeysConnections) do
 		v:disconnect()
 	end
-	
 	ExitButtonConnection:disconnect()
 	SheetsButtonConnection:disconnect()
-	SheetsEditedConnection:disconnect()
 	CapsButtonConnection:disconnect()
+	if MidiGui then
+		MidiGui.Enabled = false
+	end
 end
 
 ----------------------------------
@@ -360,41 +385,114 @@ end
 ------------VARIABLES-------------
 ----------------------------------
 
-ContentProvider = game:GetService("ContentProvider")
+local lp = game.Players.LocalPlayer
+local char = lp.Character or lp.CharacterAdded:Wait()
+
+local boomboxes = {}
+
+local noteBoomboxes = {}
 
 LocalSounds = {
-	"233836579", --C/C#
-	"233844049", --D/D#
-	"233845680", --E/F
-	"233852841", --F#/G
-	"233854135", --G#/A
-	"233856105", --A#/B
+	[1] = {id = "233836579", lastPlayed = 0}, --C/C#
+	[2] = {id = "233844049", lastPlayed = 0}, --D/D#
+	[3] = {id = "233845680", lastPlayed = 0}, --E/F
+	[4] = {id = "233852841", lastPlayed = 0}, --F#/G
+	[5] = {id = "233854135", lastPlayed = 0}, --G#/A
+	[6] = {id = "233856105", lastPlayed = 0}, --A#/B
 }
 
-ExistingSounds = {}
 
-----------------------------------
-------------FUNCTIONS-------------
-----------------------------------
-local bb
-local rem
-local audio
-
-for i,v in pairs(game.Players.LocalPlayer.Backpack:GetChildren()) do
-    if v:IsA("Tool") and v.Handle and v.Handle:FindFirstChildOfClass("Sound") and v:FindFirstChildOfClass("RemoteEvent") then
-        bb = v
-        rem = bb:FindFirstChildOfClass("RemoteEvent")
-        audio = bb.Handle:FindFirstChildOfClass("Sound")
-    end
+local function findBoomboxes(parent)
+	for i,v in pairs(parent:GetChildren()) do
+		local partName = v.Name:lower():gsub(" ","")
+		if v:IsA("Tool") and (partName:find("boombox") or partName:find("radio")) then
+			table.insert(boomboxes, v)
+		end
+	end
 end
 
-function PreloadAudio(sounds)
+local function playSound(bb, sound, timepos)
+	local remote = bb:FindFirstChildOfClass("RemoteEvent")
+	local audio = bb.Handle.Sound
+	local sound = LocalSounds[sound]
+	sound.lastPlayed = os.clock()
+	if not audio.Playing then
+		if settings.AlternativeBoombox then
+			remote:FireServer(sound.id)
+		else
+			remote:FireServer("PlaySong",sound.id)
+		end
+		bb.Handle.Sound.Destroying:Wait()
+		task.wait()
+		audio = bb.Handle:FindFirstChild("Sound")
+	end
+
+	audio.TimePosition = timepos
+	task.spawn(function()
+		task.wait(5)
+		if os.clock() - sound.lastPlayed >= 5 then
+			audio:Stop()
+		end
+	end)
 end
-function SetSounds(sounds)
+
+findBoomboxes(lp.Backpack)
+findBoomboxes(char)
+
+for i = 1,6 do
+	noteBoomboxes[i] = boomboxes[i]
+	noteBoomboxes[i].Parent = char
 end
+
+local oldpos = char.HumanoidRootPart.CFrame
+char.HumanoidRootPart.CFrame = CFrame.new(1000,99999999,10000)
+
+task.wait(.3)
+
+for i,v in pairs(noteBoomboxes) do
+	v.Parent = workspace
+end
+
+task.wait(.2)
+
+local fakeTools = {}
+for i = 1,10 do
+	local tool = Instance.new("Tool",lp.Backpack)
+	table.insert(fakeTools, tool)
+end
+
+task.wait()
+
+for i,v in pairs(noteBoomboxes) do
+	char.Humanoid:EquipTool(v)
+end
+
+task.wait(.2)
+
+for i,v in pairs(fakeTools) do
+	v:Destroy()
+end
+
+task.wait()
+
+for i,v in pairs(noteBoomboxes) do
+    v.Parent = char
+end
+
+for i,v in pairs(lp.Backpack:GetChildren()) do
+	if v:IsA("Tool") and not table.find(noteBoomboxes,v) then
+		v:Destroy()
+	end
+end
+
+char.HumanoidRootPart.CFrame = oldpos
+
+task.wait()
+
+
 
 local counter = 0
-function PlayNoteSound(note, source, range, sounds)
+function PlayNoteSound(note)
 	local SoundList =  LocalSounds
 	
 	local note2 = (note - 1)%12 + 1	-- Which note? (1-12)
@@ -403,121 +501,27 @@ function PlayNoteSound(note, source, range, sounds)
 	local sound = math.ceil(note2/2) -- Which audio?
 	local offset = 16 * (octave - 1) + 8 * (1 - note2%2) -- How far in audio?
 	
-	--local audio = bb.Handle:FindFirstChildOfClass("Sound") -- Create the audio
-	--audio.SoundId = "rbxassetid://"..SoundList[sound] -- Give its sound
-	--if source then
-	--	local a = 1/range^2
-	--	local distance = (game.Workspace.CurrentCamera.CoordinateFrame.p - source).magnitude
-	--	local volume = -a*distance^2 + 1
-	--	if volume < 0.05 then
-	--		audio:remove()
-	--		return
-	--	end
-	--	audio.Volume = volume
-	--end
-	local lastplayed = SoundList[sound]
-	local counterid = counter
-	bb.Parent = game.Players.LocalPlayer.Character
-	rem:FireServer("PlaySong",SoundList[sound])
-	--repeat task.wait() audio:Stop() audio.TimePosition = offset + (octave - .9)/15 until audio.IsPlaying == false
-	--audio:Play()
-	for i = 1,10 do
-	    audio.TimePosition = offset + (octave - .9)/15
-	    audio:Play()
-	end
-	
-	wait(1)
-	
-	print(offset + (octave - .9)/15)
-	task.wait()
-	--audio.Played:Wait()
-	--audio:Play() -- Play the audio
-	--wait(.2)
-	--audio.TimePosition = offset + (octave - .9)/15 -- set the time position
-	--task.wait()
--- 	table.insert(ExistingSounds, 1, audio)
--- 	if #ExistingSounds >= 10 then
--- 		ExistingSounds[10]:Stop() -- limit the number of playing sounds!
--- 		ExistingSounds[10] = nil
--- 	end
-	
-    delay(4, function() 
-        if audio.SoundId == lastplayed then 
-            audio:Stop() 
-            print("Stopped")
-        end
-    end) -- remove the audio in 4 seconds, enough time for it to play
+	playSound(noteBoomboxes[sound], sound, offset + (octave - .9)/15)
 end
 
+
 ----------------------------------
 ----------------------------------
 ----------------------------------
-----------CAMERA/PLAYER-----------
+---------INITIATE SCRIPT----------
 ----------------------------------
 ----------------------------------
 ----------------------------------
 
-----------------------------------
-------------VARIABLES-------------
-----------------------------------
-
-Camera = game.Workspace.CurrentCamera
-
-----------------------------------
-------------FUNCTIONS-------------
-----------------------------------
-
-function Jump()
-	local character = Player.Character
-	if character then
-		local humanoid = character:FindFirstChild("Humanoid")
-		if humanoid then
-			humanoid.Jump = true
-		end
-	end
-end
-function HumanoidChanged(humanoid, property)
-	--print(property)
-	if property == "Jump" then
-		humanoid.Jump = false
-	elseif property == "Sit" then
-		humanoid.Sit = true
-	elseif property == "Parent" then
-		Deactivate()
-		Abort()
-	end
-end
-function HumanoidDied()
-	Deactivate()
-end
-function SetCamera(cframe)
-end
-function ReturnCamera()
-	Camera.CameraType = Enum.CameraType.Custom
-end
-
-----------------------------------
------------CONNECTIONS------------
-----------------------------------
-
-HumanoidChangedConnection = nil
-HumanoidDiedConnection = nil
-
-function MakeHumanoidConnections()
-	local character = Player.Character
-	if character then
-		local humanoid = character:FindFirstChild("Humanoid")
-		if humanoid then
-			HumanoidChangedConnection = humanoid.Changed:connect(function(property)
-				HumanoidChanged(humanoid, property)
-			end)
-			HumanoidDiedConnection = humanoid.Died:connect(HumanoidDied)
-		end
-	end
-end
-function BreakHumanoidConnections()
-	HumanoidChangedConnection:disconnect()
-	HumanoidDiedConnection:disconnect()
-end
-
+ScriptReady = true
 Activate()
+Player.Character.Humanoid.Died:Connect(Deactivate)
+if settings.LoadMidiPlayer then
+	MidiGui = game:GetService("CoreGui"):FindFirstChild("ScreenGui")
+	if not MidiGui then
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/richie0866/MidiPlayer/main/package.lua"))()
+		MidiGui = game:GetService("CoreGui"):WaitForChild("ScreenGui")
+	else
+		MidiGui.Enabled = true
+	end
+end

@@ -529,13 +529,17 @@ Activate()
 Player.Character.Humanoid.Died:Connect(Deactivate)
 if settings.LoadMidiPlayer then
 	print("setting enabled")
-	MidiGui = game:GetService("CoreGui"):FindFirstChild("ScreenGui")
+
+	for i,v in pairs(game:GetService("CoreGui"):GetChildren()) do
+		if v.Name == "ScreenGui" and v:FindFirstChild("Handle") then
+			MidiGui = v
+			break
+		end
+	end
 	if not MidiGui then
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/richie0866/MidiPlayer/main/package.lua"))()
 		MidiGui = game:GetService("CoreGui"):WaitForChild("ScreenGui")
-		print("no gui found, creating new one")
 	else
 		MidiGui.Enabled = true
-		print("enabling old gui")
 	end
 end

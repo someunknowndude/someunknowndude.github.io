@@ -343,6 +343,7 @@ SheetsButtonConnection = nil;
 CapsButtonConnection = nil;
 TransDnConnection = nil;
 TransUpConnection = nil;
+NewGuiConnection = nil;
 
 function MakeGuiConnections()
 	for i, v in pairs(PianoGui.Keys:GetChildren()) do
@@ -371,11 +372,19 @@ function MakeGuiConnections()
 	TransUpConnection = PianoGui.TransUpButton.MouseButton1Click:connect(function()
 		Transpose(1)
 	end)
+
+	NewGuiConnection = Player.PlayerGui.ChildAdded:Connect(function(instance)
+		if instance.Name == "ChooseSongGui" then
+			task.wait()
+			instance.Enabled = false
+		end
+	end)
 end
 function BreakGuiConnections()
 	for i, v in pairs(PianoKeysConnections) do
 		v:disconnect()
 	end
+	NewGuiConnection:disconnect()
 	ExitButtonConnection:disconnect()
 	SheetsButtonConnection:disconnect()
 	CapsButtonConnection:disconnect()
@@ -528,11 +537,11 @@ ScriptReady = true
 Activate()
 Player.Character.Humanoid.Died:Connect(Deactivate)
 if settings.LoadMidiPlayer then
-	print("setting enabled")
 
 	for i,v in pairs(game:GetService("CoreGui"):GetChildren()) do
-		if v.Name == "ScreenGui" and v:FindFirstChild("Handle") then
+		if v.Name == "ScreenGui" and v:FindFirstChild("Frame") and v.Frame:FindFirstChild("Handle") then
 			MidiGui = v
+			print("got midi gui!")
 			break
 		end
 	end

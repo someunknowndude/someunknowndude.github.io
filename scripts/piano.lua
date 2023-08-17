@@ -2,7 +2,6 @@
 -- make sure you have at least 6 boomboxes
 
 local settings = {
-	AirSit = true, 				-- makes you sit in place for a better "piano" experience
 	DisableSheetPage = true, 	-- disables the built-in sheet music button/keybind
 	DisableZoomKeys = true, 	-- disables the I and O zoom keybinds
 	LoadMidiPlayer = true, 		-- loads  0866's midi autoplayer
@@ -349,10 +348,21 @@ function MakeGuiConnections()
 		PianoKeysConnections[i] = v.InputBegan:connect(function(Object) PianoKeyPressed(Object, tonumber(v.Name)) end)
 	end
 	
+	local AnchorButton = PianoGui.SheetsButton:Clone()
+	AnchorButton.Name = "AnchorButton"
+	AnchorButton.Text = "Airsit"
+	AnchorButton.Position = UDim2.new(0,80,0,15)
+	AnchorButton.Parent = PianoGui
+
 	ExitButtonConnection = PianoGui.ExitButton.InputBegan:connect(ExitButtonPressed)
 	SheetsButtonConnection = PianoGui.SheetsButton.InputBegan:connect(SheetsButtonPressed)
 	CapsButtonConnection = PianoGui.CapsButton.InputBegan:connect(CapsButtonPressed)
 	
+	AnchorButton.MouseButton1Click:connect(function()
+		Player.Character.HumanoidRootPart.Anchored = not Player.Character.HumanoidRootPart.Anchored
+		Player.Character.Humanoid.Sit = not Player.Character.Humanoid.Sit
+	end)
+
 	TransDnConnection = PianoGui.TransDnButton.MouseButton1Click:connect(function()
 		Transpose(-1)
 	end)

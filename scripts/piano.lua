@@ -1,5 +1,6 @@
 -- FE Piano by quirky anime boy (Discord: smokedoutlocedout)
 -- make sure you have at least 6 boomboxes and arent in shiftlock
+-- credit to 0866 for the midi player
 
 local settings = {
 	DisableSheetPage = true, 	-- disables the built-in sheet music button/keybind

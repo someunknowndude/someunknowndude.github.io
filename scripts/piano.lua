@@ -22,7 +22,6 @@ if getgenv().PianoSettings == nil then
 		AlternativeBoombox = false, -- removes the "PlaySong" argument from the RemoteEvent. Change this if no sounds are playing
 		PlayPianoAnimations = true, -- plays piano animations while airsitting (will break tool hold animation)
 	}
-	print("loaded default settings")
 else
 	settings = getgenv().PianoSettings
 end

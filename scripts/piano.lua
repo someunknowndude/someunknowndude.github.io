@@ -12,7 +12,9 @@ for some good midis:
 Musescore: https://musescore.com/
 Musescore downloader extension: https://github.com/ingui-n/musescore-downloader/tree/master
 --]]
-if settings == nil then
+
+local settings
+if getgenv().PianoSettings == nil then
 	settings = {
 		DisableSheetPage = true, 	-- disables the built-in sheet music button/keybind
 		DisableZoomKeys = true, 	-- disables the I and O zoom keybinds
@@ -21,6 +23,8 @@ if settings == nil then
 		PlayPianoAnimations = true, -- plays piano animations while airsitting (will break tool hold animation)
 	}
 	print("loaded default settings")
+else
+	settings = getgenv().PianoSettings
 end
 if game:GetService("SoundService").RespectFilteringEnabled then return error("RespectFilteringEnabled is active. Please try a different game.") end -- TimePosition etc. can't be used
 

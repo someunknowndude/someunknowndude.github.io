@@ -1,6 +1,6 @@
--- FE Piano by quirky anime boy (Discord: smokedoutlocedout)
--- make sure you have at least 6 boomboxes and arent in shiftlock
--- credit to 0866 for the midi player
+-- FE Boombox Piano by quirky anime boy (Discord: smokedoutlocedout)
+-- make sure you arent in shiftlock, use airsit to play midis without moving
+-- credits to 0866 for the midi player
 
 local settings = {
 	DisableSheetPage = true, 	-- disables the built-in sheet music button/keybind
@@ -11,21 +11,88 @@ local settings = {
 
 if game:GetService("SoundService").RespectFilteringEnabled then return end -- timeposition and Stop cant be used
 
+
 if settings.DisableZoomKeys then
 	game:GetService("ContextActionService"):BindActionAtPriority("do nothing", function() return Enum.ContextActionResult.Sink end, false, 3000, Enum.KeyCode.I, Enum.KeyCode.O)
 end
 
+Player = game.Players.LocalPlayer
+
+local boomboxes = {}
+local function findBoomboxes(parent)
+	for i,v in pairs(parent:GetChildren()) do
+		local partName = v.Name:lower():gsub(" ","")
+		if v:IsA("Tool") and (partName:find("boombox") or partName:find("radio")) then
+			table.insert(boomboxes, v)
+		end
+	end
+end
+
+findBoomboxes(Player.Backpack)
+findBoomboxes(Player.Character)
+
+local bbAmount = #boomboxes
+if bbAmount < 6 then
+	local pos = Player.Character.HumanoidRootPart.CFrame
+
+	local tools = {}
+
+	local function dupe(num)
+		local char = Player.Character
+		local hrp = char:WaitForChild("HumanoidRootPart")
+		hrp.CFrame = CFrame.new(420 + (num * 20),9999999,0)
+		
+		for i,v in pairs(Player.Backpack:GetChildren()) do
+		if v:IsA("Tool") then
+			table.insert(tools, v)
+			v.Parent = char
+		end
+		end
+		task.wait(.3)
+		for i,v in pairs(char:GetChildren()) do
+		if v:IsA("Tool") then
+			v.Parent = workspace
+			v.Handle.Anchored = true
+		end
+		end
+		
+		task.wait(.2)
+		
+		char.Humanoid:ChangeState("Dead")
+		
+		Player.CharacterAdded:Wait()
+	end
+
+	for i = 1, 6 - ((bbAmount > 0 and bbAmount) or 0) do
+		dupe(i)
+	end
+	
+	Player.Character:WaitForChild("HumanoidRootPart").CFrame = pos
+
+	for i,v in pairs(tools) do
+		v.Handle.Anchored = false
+		Player.Character.Humanoid:EquipTool(v)
+	end
+
+	task.wait(.2)
+
+	findBoomboxes(Player.Backpack)
+	findBoomboxes(Player.Character)
+
+	
+end
 
 local PianoGui = game:GetObjects("rbxassetid://11319793375")[1].PianoGui
 local script = PianoGui.Main
 
 Gui = script.Parent
-Player = game.Players.LocalPlayer
 
 Gui.Parent = Player.PlayerGui
 PlayingEnabled = false
 
 ScriptReady = false
+
+
 
 ----------------------------------
 ----------------------------------
@@ -56,7 +123,6 @@ end
 
 function Deactivate()
 	PlayingEnabled = false
-	BreakHumanoidConnections()
 	BreakKeyboardConnections()
 	BreakGuiConnections()
 	HidePiano()
@@ -214,6 +280,7 @@ function ShowPiano()
 	)
 end
 function HidePiano()
+	if PianoGui.Parent == nil then return end
 	PianoGui:TweenPosition(
 		UDim2.new(0.481, -355, 1, 1),
 		Enum.EasingDirection.Out,
@@ -392,6 +459,8 @@ function BreakGuiConnections()
 	if MidiGui then
 		MidiGui.Enabled = false
 	end
+	Player.Character.HumanoidRootPart.Anchored = false
+	Player.Character.Humanoid.Sit = false
 end
 
 ----------------------------------
@@ -409,8 +478,6 @@ end
 local lp = game.Players.LocalPlayer
 local char = lp.Character or lp.CharacterAdded:Wait()
 
-local boomboxes = {}
-
 local noteBoomboxes = {}
 
 LocalSounds = {
@@ -423,14 +490,6 @@ LocalSounds = {
 }
 
 
-local function findBoomboxes(parent)
-	for i,v in pairs(parent:GetChildren()) do
-		local partName = v.Name:lower():gsub(" ","")
-		if v:IsA("Tool") and (partName:find("boombox") or partName:find("radio")) then
-			table.insert(boomboxes, v)
-		end
-	end
-end
 
 local function playSound(bb, sound, timepos)
 	local remote = bb:FindFirstChildOfClass("RemoteEvent")
@@ -456,9 +515,6 @@ local function playSound(bb, sound, timepos)
 		end
 	end)
 end
-
-findBoomboxes(lp.Backpack)
-findBoomboxes(char)
 
 for i = 1,6 do
 	noteBoomboxes[i] = boomboxes[i]
@@ -542,7 +598,6 @@ if settings.LoadMidiPlayer then
 	for i,v in pairs(game:GetService("CoreGui"):GetChildren()) do
 		if v.Name == "ScreenGui" and v:FindFirstChild("Frame") and v.Frame:FindFirstChild("Handle") then
 			MidiGui = v
-			print("got midi gui!")
 			break
 		end
 	end

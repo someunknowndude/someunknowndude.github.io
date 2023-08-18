@@ -12,7 +12,7 @@ for some good midis:
 Musescore: https://musescore.com/
 Musescore downloader extension: https://github.com/ingui-n/musescore-downloader/tree/master
 --]]
-if not settings then
+if settings == nil then
 	settings = {
 		DisableSheetPage = true, 	-- disables the built-in sheet music button/keybind
 		DisableZoomKeys = true, 	-- disables the I and O zoom keybinds

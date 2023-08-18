@@ -12,15 +12,16 @@ for some good midis:
 Musescore: https://musescore.com/
 Musescore downloader extension: https://github.com/ingui-n/musescore-downloader/tree/master
 --]]
-local settings = {
-	DisableSheetPage = true, 	-- disables the built-in sheet music button/keybind
-	DisableZoomKeys = true, 	-- disables the I and O zoom keybinds
-	LoadMidiPlayer = true, 		-- loads  0866's midi autoplayer
-	AlternativeBoombox = false, -- removes the "PlaySong" argument from the RemoteEvent. Change this if no sounds are playing
-	PlayPianoAnimations = true, -- plays piano animations while airsitting (will break tool hold animation)
-}
-
-if game:GetService("SoundService").RespectFilteringEnabled then return end -- TimePosition etc. can't be used
+if not settings then
+	settings = {
+		DisableSheetPage = true, 	-- disables the built-in sheet music button/keybind
+		DisableZoomKeys = true, 	-- disables the I and O zoom keybinds
+		LoadMidiPlayer = true, 		-- loads  0866's midi autoplayer
+		AlternativeBoombox = false, -- removes the "PlaySong" argument from the RemoteEvent. Change this if no sounds are playing
+		PlayPianoAnimations = true, -- plays piano animations while airsitting (will break tool hold animation)
+	}
+end
+if game:GetService("SoundService").RespectFilteringEnabled then return error("RespectFilteringEnabled is active. Please try a different game.") end -- TimePosition etc. can't be used
 
 
 if settings.DisableZoomKeys then

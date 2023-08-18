@@ -1,15 +1,26 @@
--- FE Boombox Piano by quirky anime boy (Discord: smokedoutlocedout)
--- make sure you arent in shiftlock, use airsit to play midis without moving
--- credits to 0866 for the midi player
+--[[
+FE Boombox Piano by quirky anime boy (Discord: smokedoutlocedout)
 
+Make sure you aren't in shiftlock, use Airsit to play midis without moving.
+
+If you have less than 6 boomboxes the script will try to dupe them for you.
+
+Credits to 0866 for the midi player 
+(note: put midi files you wanna play into the midi folder located in your exploit's workspace folder)
+
+for some good midis:
+Musescore: https://musescore.com/
+Musescore downloader extension: https://github.com/ingui-n/musescore-downloader/tree/master
+--]]
 local settings = {
 	DisableSheetPage = true, 	-- disables the built-in sheet music button/keybind
 	DisableZoomKeys = true, 	-- disables the I and O zoom keybinds
 	LoadMidiPlayer = true, 		-- loads  0866's midi autoplayer
-	AlternativeBoombox = false 	-- Removes the "PlaySong" argument from the RemoteEvent. Change this if no sounds are playing. 
+	AlternativeBoombox = false, -- removes the "PlaySong" argument from the RemoteEvent. Change this if no sounds are playing
+	PlayPianoAnimations = true, -- plays piano animations while airsitting (will break tool hold animation)
 }
 
-if game:GetService("SoundService").RespectFilteringEnabled then return end -- timeposition and Stop cant be used
+if game:GetService("SoundService").RespectFilteringEnabled then return end -- TimePosition etc. can't be used
 
 
 if settings.DisableZoomKeys then
@@ -17,6 +28,7 @@ if settings.DisableZoomKeys then
 end
 
 Player = game.Players.LocalPlayer
+Character = Player.Character or Player.CharacterAdded:Wait()
 
 local boomboxes = {}
 local function findBoomboxes(parent)
@@ -29,36 +41,36 @@ local function findBoomboxes(parent)
 end
 
 findBoomboxes(Player.Backpack)
-findBoomboxes(Player.Character)
+findBoomboxes(Character)
 
 local bbAmount = #boomboxes
 if bbAmount < 6 then
-	local pos = Player.Character.HumanoidRootPart.CFrame
-
+	Character = Player.Character or Player.CharacterAdded:Wait()
+	local pos = Character.HumanoidRootPart.CFrame
 	local tools = {}
 
 	local function dupe(num)
-		local char = Player.Character
-		local hrp = char:WaitForChild("HumanoidRootPart")
+		Character = Player.Character or Player.CharacterAdded:Wait()
+		local hrp = Character:WaitForChild("HumanoidRootPart")
 		hrp.CFrame = CFrame.new(420 + (num * 20),9999999,0)
 		
 		for i,v in pairs(Player.Backpack:GetChildren()) do
-		if v:IsA("Tool") then
-			table.insert(tools, v)
-			v.Parent = char
-		end
+			if v:IsA("Tool") then
+				table.insert(tools, v)
+				v.Parent = Character
+			end
 		end
 		task.wait(.3)
-		for i,v in pairs(char:GetChildren()) do
-		if v:IsA("Tool") then
-			v.Parent = workspace
-			v.Handle.Anchored = true
-		end
+		for i,v in pairs(Character:GetChildren()) do
+			if v:IsA("Tool") then
+				v.Parent = workspace
+				v.Handle.Anchored = true
+			end
 		end
 		
 		task.wait(.2)
 		
-		char.Humanoid:ChangeState("Dead")
+		Character.Humanoid:ChangeState("Dead")
 		
 		Player.CharacterAdded:Wait()
 	end
@@ -67,23 +79,24 @@ if bbAmount < 6 then
 		dupe(i)
 	end
 	
-	Player.Character:WaitForChild("HumanoidRootPart").CFrame = pos
+	Character = Player.Character or Player.CharacterAdded:Wait()
+
+	Character:WaitForChild("HumanoidRootPart").CFrame = pos
 
 	for i,v in pairs(tools) do
 		v.Handle.Anchored = false
-		Player.Character.Humanoid:EquipTool(v)
+		Character.Humanoid:EquipTool(v)
 	end
 
 	task.wait(.2)
 
 	findBoomboxes(Player.Backpack)
-	findBoomboxes(Player.Character)
-
-	
+	findBoomboxes(Character)
 end
 
 local PianoGui = game:GetObjects("rbxassetid://11319793375")[1].PianoGui
 local script = PianoGui.Main
+
 
 Gui = script.Parent
 
@@ -127,7 +140,7 @@ function Deactivate()
 	BreakGuiConnections()
 	HidePiano()
 	HideSheets()
-	for i,v in pairs(Player.Character:GetChildren()) do
+	for i,v in pairs(Character:GetChildren()) do
 		if v:IsA("Tool") then
 			v.Handle.Sound:Stop()
 		end
@@ -406,6 +419,7 @@ end
 ----------------------------------
 
 PianoKeysConnections = {};
+ForceStopConnections = {};
 ExitButtonConnection = nil;
 SheetsButtonConnection = nil;
 CapsButtonConnection = nil;
@@ -428,9 +442,31 @@ function MakeGuiConnections()
 	SheetsButtonConnection = PianoGui.SheetsButton.InputBegan:connect(SheetsButtonPressed)
 	CapsButtonConnection = PianoGui.CapsButton.InputBegan:connect(CapsButtonPressed)
 	
+	local playingAnimation = false
+
 	AnchorButton.MouseButton1Click:connect(function()
-		Player.Character.HumanoidRootPart.Anchored = not Player.Character.HumanoidRootPart.Anchored
-		Player.Character.Humanoid.Sit = not Player.Character.Humanoid.Sit
+		Character.HumanoidRootPart.Anchored = not Character.HumanoidRootPart.Anchored
+		Character.Humanoid.Sit = not Character.Humanoid.Sit
+	
+		if not settings.PlayPianoAnimations then return end
+		playingAnimation = not playingAnimation
+		if playingAnimation then
+			local animation = Instance.new("Animation")
+			local animationId
+			if Character.Humanoid.RigType == Enum.HumanoidRigType.R6 then
+				animationId = "673670051"
+			else
+				animationId = "673670434"
+			end
+			animation.AnimationId = "rbxassetid://" .. animationId
+			local loadedAnimation = Character.Humanoid:LoadAnimation(animation)
+			loadedAnimation:Play()
+		else
+			for i,v in pairs(Character.Humanoid:GetPlayingAnimationTracks()) do
+				v:Stop()
+			end
+
+		end
 	end)
 
 	TransDnConnection = PianoGui.TransDnButton.MouseButton1Click:connect(function()
@@ -452,6 +488,9 @@ function BreakGuiConnections()
 	for i, v in pairs(PianoKeysConnections) do
 		v:disconnect()
 	end
+	for i,v in pairs(ForceStopConnections) do
+		v:disconnect()
+	end
 	NewGuiConnection:disconnect()
 	ExitButtonConnection:disconnect()
 	SheetsButtonConnection:disconnect()
@@ -459,8 +498,13 @@ function BreakGuiConnections()
 	if MidiGui then
 		MidiGui.Enabled = false
 	end
-	Player.Character.HumanoidRootPart.Anchored = false
-	Player.Character.Humanoid.Sit = false
+	Character.HumanoidRootPart.Anchored = false
+	Character.Humanoid.Sit = false
+	if settings.PlayPianoAnimations then
+		for i,v in pairs(Character.Humanoid:GetPlayingAnimationTracks()) do
+			v:Stop()
+		end
+	end
 end
 
 ----------------------------------
@@ -475,8 +519,8 @@ end
 ------------VARIABLES-------------
 ----------------------------------
 
-local lp = game.Players.LocalPlayer
-local char = lp.Character or lp.CharacterAdded:Wait()
+local Player = game.Players.LocalPlayer
+local Character = Player.Character or Player.CharacterAdded:Wait()
 
 local noteBoomboxes = {}
 
@@ -506,23 +550,28 @@ local function playSound(bb, sound, timepos)
 		task.wait()
 		audio = bb.Handle:FindFirstChild("Sound")
 	end
-
 	audio.TimePosition = timepos
+	audio:Resume()
+	local stopcon;stopcon = audio.DidLoop:Connect(function()
+		audio:Pause()
+		stopcon:Disconnect()
+	end)
+	table.insert(ForceStopConnections, stopcon)
 	task.spawn(function()
 		task.wait(5)
 		if os.clock() - sound.lastPlayed >= 5 then
-			audio:Stop()
+			audio:Pause()
 		end
 	end)
 end
 
 for i = 1,6 do
 	noteBoomboxes[i] = boomboxes[i]
-	noteBoomboxes[i].Parent = char
+	noteBoomboxes[i].Parent = Character
 end
 
-local oldpos = char.HumanoidRootPart.CFrame
-char.HumanoidRootPart.CFrame = CFrame.new(1000,99999999,10000)
+local oldpos = Character.HumanoidRootPart.CFrame
+Character.HumanoidRootPart.CFrame = CFrame.new(1000,99999999,10000)
 
 task.wait(.3)
 
@@ -534,14 +583,14 @@ task.wait(.2)
 
 local fakeTools = {}
 for i = 1,10 do
-	local tool = Instance.new("Tool",lp.Backpack)
+	local tool = Instance.new("Tool",Player.Backpack)
 	table.insert(fakeTools, tool)
 end
 
 task.wait()
 
 for i,v in pairs(noteBoomboxes) do
-	char.Humanoid:EquipTool(v)
+	Character.Humanoid:EquipTool(v)
 end
 
 task.wait(.2)
@@ -553,16 +602,16 @@ end
 task.wait()
 
 for i,v in pairs(noteBoomboxes) do
-    v.Parent = char
+    v.Parent = Character
 end
 
-for i,v in pairs(lp.Backpack:GetChildren()) do
+for i,v in pairs(Player.Backpack:GetChildren()) do
 	if v:IsA("Tool") and not table.find(noteBoomboxes,v) then
 		v:Destroy()
 	end
 end
 
-char.HumanoidRootPart.CFrame = oldpos
+Character.HumanoidRootPart.CFrame = oldpos
 
 task.wait()
 
@@ -592,9 +641,8 @@ end
 
 ScriptReady = true
 Activate()
-Player.Character.Humanoid.Died:Connect(Deactivate)
+Character.Humanoid.Died:Connect(Deactivate)
 if settings.LoadMidiPlayer then
-
 	for i,v in pairs(game:GetService("CoreGui"):GetChildren()) do
 		if v.Name == "ScreenGui" and v:FindFirstChild("Frame") and v.Frame:FindFirstChild("Handle") then
 			MidiGui = v

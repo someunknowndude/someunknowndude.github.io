@@ -20,6 +20,7 @@ if settings == nil then
 		AlternativeBoombox = false, -- removes the "PlaySong" argument from the RemoteEvent. Change this if no sounds are playing
 		PlayPianoAnimations = true, -- plays piano animations while airsitting (will break tool hold animation)
 	}
+	print("loaded default settings")
 end
 if game:GetService("SoundService").RespectFilteringEnabled then return error("RespectFilteringEnabled is active. Please try a different game.") end -- TimePosition etc. can't be used
 

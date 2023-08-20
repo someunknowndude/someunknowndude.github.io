@@ -44,6 +44,8 @@ local function findBoomboxes(parent)
 		end
 	end
 end
+Character.Humanoid:UnequipTools()
+task.wait(.2)
 
 findBoomboxes(Player.Backpack)
 findBoomboxes(Character)
@@ -440,8 +442,14 @@ function MakeGuiConnections()
 	local AnchorButton = PianoGui.SheetsButton:Clone()
 	AnchorButton.Name = "AnchorButton"
 	AnchorButton.Text = "Airsit"
-	AnchorButton.Position = UDim2.new(0,80,0,15)
+	AnchorButton.Position = UDim2.new(0,102,0,15)
 	AnchorButton.Parent = PianoGui
+
+	local MuteButton = PianoGui.SheetsButton:Clone()
+	MuteButton.Name = "MuteButton"
+	MuteButton.Text = "Mute"
+	MuteButton.Position = UDim2.new(0,10,0,15)
+	MuteButton.Parent = PianoGui
 
 	ExitButtonConnection = PianoGui.ExitButton.InputBegan:connect(ExitButtonPressed)
 	SheetsButtonConnection = PianoGui.SheetsButton.InputBegan:connect(SheetsButtonPressed)
@@ -471,6 +479,22 @@ function MakeGuiConnections()
 				v:Stop()
 			end
 
+		end
+	end)
+
+	MuteButton.MouseButton1Click:connect(function()
+		for i,v in pairs(game.Players:GetPlayers()) do
+			if i == 1 then continue end
+			local c = v.Character
+			if not c then continue end
+			for i, part in pairs(c:GetChildren()) do
+				if part:IsA("Tool") then
+					local sound = part.Handle:FindFirstChildOfClass("Sound")
+					if sound then
+						sound:Stop()
+					end
+				end
+			end 
 		end
 	end)
 

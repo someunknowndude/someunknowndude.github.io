@@ -119,7 +119,7 @@ end
 
 lp.Chatted:Connect(function(m)
 	if m == "-rj" then
-		game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, game.JobId, lp)
+		game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, game.JobId)
 	end
 end)
 

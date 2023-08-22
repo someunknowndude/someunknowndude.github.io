@@ -3,7 +3,6 @@
 local startSignal = Vector3.new(123123,6969,123123)
 local deleteSignal = Vector3.new(0,8000, 133769)
 
-local customTime = 0.3
 
 local players = game:GetService("Players")
 local lp = players.LocalPlayer
@@ -22,7 +21,7 @@ local partsFolder = Instance.new("Folder",workspace)
 partsFolder.Name = "Spawned Parts"
 
 local buildParts = { -- editing this will cause desync with other users
-	[1] = {
+	{
 		name = "Default Part",
 		func = function(self, cf)
             local part = Instance.new("Part")
@@ -39,7 +38,7 @@ local buildParts = { -- editing this will cause desync with other users
             return model
 		end
 	},
-	[2] = {
+	{
 		name = "3s³ Ball",
 		func = function(self, cf)
 			local part = Instance.new("Part")
@@ -58,7 +57,7 @@ local buildParts = { -- editing this will cause desync with other users
             return model
 		end
 	},
-    [3] = {
+    {
         name = "Roblox House",
         func = function(self, cf)
             local model = game:GetObjects("rbxassetid://8959904556")[1].House
@@ -71,6 +70,62 @@ local buildParts = { -- editing this will cause desync with other users
     }
 }
 
+local function notify(header, text, duration)
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = header or "",
+        Text = text or "",
+        Duration = duration or 1.5
+    })
+end
+
+local settings = {
+    customTime = 0.5,
+    snapEnabled = true,
+    snapValue = 1,
+    checkRange = 2
+}
+
+local keybinds = {
+    ["G"] = function()
+        settings.snapEnabled = not settings.snapEnabled
+        notify("Grid snap set to " .. tostring(settings.snapEnabled), "[HRPBtools] press G to toggle")
+    end
+}
+
+game:GetService("UserInputService").InputBegan:Connect(function(obj,proc)
+    if proc then return end
+    local split = tostring(obj.KeyCode):split(".")
+    local key = split[#split]
+    if keybinds[key] then
+        keybinds[key]()
+    end
+end)
+
+local commands = {}
+local function addCommand(cmd, func)
+    commands[cmd] = func
+end
+
+lp.Chatted:Connect(function(m)
+    local split = m:split(" ")
+    local cmd = split[1]:sub(2,-1)
+    if commands[cmd] then
+        table.remove(split, 1)
+        commands[cmd](unpack(split))
+    end
+end)
+
+addCommand("rj",function()
+    game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, game.JobId)
+end)
+
+addCommand("time", function(newTime)
+    settings.customTime = tonumber(newTime)
+end)
+
+addCommand("checkrange", function(newRange)
+    settings.checkRange = tonumber(newRange)
+end)
 
 for i,v in pairs(buildParts) do
 	v.signal = Vector3.new(500,909090,1337) + Vector3.new(i*20,0,i*20)
@@ -118,11 +173,25 @@ local function uniqueOffset(user)
 	return Vector3.new(random, 0, random)
 end
 
-lp.Chatted:Connect(function(m)
-	if m == "-rj" then
-		game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, game.JobId)
-	end
-end)
+local function partToModel(part)
+    if not part or not part.Parent then return end
+    for i,v in pairs(partsFolder:GetChildren()) do
+        if not v:IsA("Model") then continue end
+        if v == part.Parent then
+            return v
+        else
+            partToModel(part.Parent)
+        end
+    end
+end
+
+local function snapToGrid(pos, snapAmount)
+	local X = math.floor((pos.X+(snapAmount/2))/snapAmount)*snapAmount
+	local Y = math.floor((pos.Y+(snapAmount/2))/snapAmount)*snapAmount
+	local Z = math.floor((pos.Z+(snapAmount/2))/snapAmount)*snapAmount
+	local newBlockPos = Vector3.new(math.round(X*1000)/1000,math.round(Y*1000)/1000,math.round(Z*1000)/1000)
+	return newBlockPos
+end
 
 local lpOffset = uniqueOffset(lp)
 local lpStartSignal = startSignal + lpOffset
@@ -160,16 +229,16 @@ local function listen(char)
 		local pos = cf.Position
 		local state = entry["state"]
 		
-		if state == "none" and checkPosition(pos,startSignal,1) then
+		if state == "none" and checkPosition(pos,startSignal,settings.checkRange) then
 			entry["state"] = "started"
 			print("Stream was started")
 			return
 		end
 		
-        if state == "none" and checkPosition(pos,deleteSignal,1) then
+        if state == "none" and checkPosition(pos,deleteSignal,settings.checkRange) then
 			entry["state"] = "deleting"
 			print("Destroy begun")
-            task.wait(customTime + 0.05)
+            task.wait(settings.customTime + 0.05)
             enoughTimePassed = true
 			return
 		end
@@ -180,22 +249,22 @@ local function listen(char)
             entry["state"] = "none"
             for i,v in pairs(partsFolder:GetChildren()) do
                 if table.find({"Start signal platform", "Build tool platform", "Delete tool platform"},v.Name) then continue end
-                if checkPosition(hrp.Position, v.PrimaryPart.Position ,1) then
+                if checkPosition(hrp.Position, v.PrimaryPart.Position ,1.5) then
                     v:Destroy()
                     print(char.Name .. " destroyed " .. v.Name)
                     enoughTimePassed = false
-                    return
                 end
             end
+            return
         end
 
 		if state == "started" then
 			for i,v in pairs(buildParts) do
-				if checkPosition(pos, v.signal + plrOffset,1) then
+				if checkPosition(pos, v.signal + plrOffset,settings.checkRange) then
 					selectedPart = v
 					entry["state"] = "selected"
                     print("selected prefab " .. selectedPart.name)
-                    task.wait(customTime + 0.05)
+                    task.wait(settings.customTime + 0.05)
                     enoughTimePassed = true
 					return
 				end
@@ -206,7 +275,11 @@ local function listen(char)
 			entry["state"] = "none"
 			if enoughTimePassed then
                 enoughTimePassed = false
-                selectedPart.func(selectedPart, hrp.CFrame)
+                if char ~= lp.Character then -- TODO( find a better way to compensate for height loss, maybe getting average of multiple Y values? )
+                    selectedPart.func(selectedPart, hrp.CFrame * CFrame.new(0,.2,0))
+                else
+                    selectedPart.func(selectedPart, hrp.CFrame)
+                end
                 print("Part placed, Stream reset")
                 return
             end
@@ -217,7 +290,7 @@ end
 local function position(position, waitTime)
 	if not lphrp then return end
 	lphrp.CFrame = CFrame.new(position)
-	local waitTime = waitTime or customTime
+	local waitTime = waitTime or settings.customTime
 	if waitTime > 0 then 
 		task.wait(waitTime)
 	end
@@ -227,7 +300,7 @@ local function startStream()
 	getBodyParts()
 	oldPosition = lphrp.CFrame
 	lphum.PlatformStand = true
-	position(lpStartSignal,0.1)
+	position(lpStartSignal,0.2)
 end
 
 local function endStream()
@@ -295,9 +368,87 @@ part.CFrame = CFrame.new(part.Position) * CFrame.Angles(math.rad(determined.X), 
 
 --]]
 
-
 local debounce = false
 local function giveBtools()
+    local redoTool = Instance.new("Tool")
+    redoTool.Name = "Redo Tool"
+    redoTool.CanBeDropped = false
+    redoTool.RequiresHandle = false
+    redoTool.Parent = lp.Backpack
+    redoTool.TextureId = "rbxassetid://13492317101"
+
+    redoTool.Activated:Connect(function()
+        if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.F) then
+            local target = mouse.Target
+            if target == nil then print("mouse has no target") return end
+            if debounce then print("debounce is true") return end
+            if target:IsDescendantOf(partsFolder) == false then print("part is not a descendant of parts folder") return end
+            debounce = true
+            local partModel = partToModel(target)
+            
+            local foundPart
+            for i,v in pairs(buildParts) do
+                if v.name == partModel.Name then
+                    foundPart = v
+                    break
+                end
+            end
+            startStream()
+            position(foundPart.signal + lpOffset, .2)
+            noclipToggle = true
+            for i = 1,50 do
+                lphrp.CFrame = partModel.PrimaryPart.CFrame
+                task.wait(0.01)
+            end
+            noclipToggle = false
+            endStream()
+            task.wait()
+            debounce = false
+        else
+            if debounce or partSelection.num == nil or partSelection.cf == nil then return end
+            debounce = true
+            startStream()
+            position(buildParts[partSelection.num].signal + lpOffset, .2)
+            noclipToggle = true
+            for i = 1,50 do
+                lphrp.CFrame = partSelection.cf
+                task.wait(0.01)
+            end
+            noclipToggle = false
+            endStream()
+            task.wait()
+            debounce = false
+        end
+    end)
+
+    local deleteTool = Instance.new("Tool")
+    deleteTool.Name = "Delete Tool"
+    deleteTool.CanBeDropped = false
+    deleteTool.RequiresHandle = false
+    deleteTool.Parent = lp.Backpack
+    deleteTool.TextureId = "rbxassetid://14808588"
+
+    deleteTool.Activated:Connect(function()
+        if debounce then return end
+        local selection = mouse.Target
+        if selection and selection:IsDescendantOf(partsFolder) and selection.Parent:IsA("Model") and selection.Parent.PrimaryPart == selection then
+            debounce = true
+            getBodyParts()
+            oldPosition = lphrp.CFrame
+            lphum.PlatformStand = true
+            position(lpDeleteSignal,0.2)
+            noclipToggle = true
+            for i = 1,50 do
+                lphrp.CFrame = selection.CFrame
+                task.wait(0.01)
+            end
+            noclipToggle = false
+            endStream()
+            task.wait()
+            debounce = false
+        end
+    end)
+
     for i,v in pairs(buildParts) do
         local buildTool = Instance.new("Tool")
         buildTool.Name = v.name
@@ -337,9 +488,12 @@ local function giveBtools()
                 end
             end)
             previewConnection = game:GetService("RunService").Heartbeat:Connect(function()
-                -- preview:PivotTo(CFrame.new(mouse.Hit.Position ) * CFrame.Angles(math.rad(determined.X), math.rad(determined.Y), math.rad(determined.Z)))
-                -- preview:PivotTo(preview.PrimaryPart.CFrame + Vector3.new(0,preview:GetExtentsSize().Y/2,0))
-                preview:PivotTo(CFrame.new((mouse.Hit * CFrame.new(0,preview.PrimaryPart.Size.Y/2,0)).Position ) * CFrame.Angles(math.rad(determined.X), math.rad(determined.Y), math.rad(determined.Z)))
+                if settings.snapEnabled then
+                local snapped = CFrame.new(snapToGrid(mouse.Hit * CFrame.new(0,preview.PrimaryPart.Size.Y/2,0).Position,settings.snapValue))
+                preview:PivotTo(snapped * CFrame.Angles(math.rad(determined.X), math.rad(determined.Y), math.rad(determined.Z)))
+                else
+                    preview:PivotTo(CFrame.new(mouse.Hit * CFrame.new(0,preview.PrimaryPart.Size.Y/2,0).Position) * CFrame.Angles(math.rad(determined.X), math.rad(determined.Y), math.rad(determined.Z)))
+                end
             end)
         end)
 
@@ -368,76 +522,11 @@ local function giveBtools()
             debounce = false
         end)
     end
-
-    local redoTool = Instance.new("Tool")
-    redoTool.Name = "Redo Tool"
-    redoTool.CanBeDropped = false
-    redoTool.RequiresHandle = false
-    redoTool.Parent = lp.Backpack
-    redoTool.TextureId = "rbxassetid://13492317101"
-
-    redoTool.Activated:Connect(function()
-        if debounce or partSelection.num == nil or partSelection.cf == nil then return end
-        debounce = true
-            startStream()
-            position(buildParts[partSelection.num].signal + lpOffset, .1)
-            noclipToggle = true
-            for i = 1,50 do
-                lphrp.CFrame = partSelection.cf
-                task.wait(0.01)
-            end
-            noclipToggle = false
-            endStream()
-            task.wait()
-            debounce = false
-    end)
-    redoTool.Activated:Connect(function()
-        if debounce or partSelection.num == nil or partSelection.cf == nil then return end
-        debounce = true
-            startStream()
-            position(buildParts[partSelection.num].signal + lpOffset, .1)
-            noclipToggle = true
-            for i = 1,50 do
-                lphrp.CFrame = partSelection.cf
-                task.wait(0.01)
-            end
-            noclipToggle = false
-            endStream()
-            task.wait()
-            debounce = false
-    end)
-
-    local deleteTool = Instance.new("Tool")
-    deleteTool.Name = "Delete Tool"
-    deleteTool.CanBeDropped = false
-    deleteTool.RequiresHandle = false
-    deleteTool.Parent = lp.Backpack
-    deleteTool.TextureId = "rbxassetid://14808588"
-
-    deleteTool.Activated:Connect(function()
-        if debounce then return end
-        local selection = mouse.Target
-        if selection and selection:IsDescendantOf(partsFolder) and selection.Parent:IsA("Model") and selection.Parent.PrimaryPart == selection then
-            debounce = true
-            getBodyParts()
-            oldPosition = lphrp.CFrame
-            lphum.PlatformStand = true
-            position(lpDeleteSignal,0.2)
-            noclipToggle = true
-            for i = 1,50 do
-                lphrp.CFrame = selection.CFrame
-                task.wait(0.01)
-            end
-            noclipToggle = false
-            endStream()
-            task.wait()
-            debounce = false
-        end
-    end)
 end
 
 giveBtools()
 lp.CharacterAdded:Connect(giveBtools)
+
 
 spawnPart(lpStartSignal - Vector3.new(0,1,0)).Name = "Start signal platform"
 spawnPart(lpDeleteSignal - Vector3.new(0,1,0)).Name = "Delete tool platform"

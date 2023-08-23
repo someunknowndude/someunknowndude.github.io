@@ -635,7 +635,7 @@ for i,v in pairs(noteBoomboxes) do
 end
 
 for i,v in pairs(Player.Backpack:GetChildren()) do
-	if v:IsA("Tool") and not table.find(noteBoomboxes,v) then
+	if v:IsA("Tool") and not table.find(boomboxes,v) then
 		v:Destroy()
 	end
 end

@@ -323,6 +323,7 @@ function ShowSheets()
 	)
 end
 function HideSheets()
+	if not SheetsGui:IsDescendantOf(game) then return
 	SheetsGui:TweenPosition(
 		UDim2.new(0.492, -200, 1, 1),
 		Enum.EasingDirection.Out,
@@ -636,7 +637,7 @@ for i,v in pairs(noteBoomboxes) do
 end
 
 for i,v in pairs(Player.Backpack:GetChildren()) do
-	if v:IsA("Tool") and not table.find(boomboxes,v) then
+	if v:IsA("Tool") and not table.find(noteBoomboxes,v) then
 		v:Destroy()
 	end
 end

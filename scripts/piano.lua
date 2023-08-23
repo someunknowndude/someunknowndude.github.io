@@ -8,6 +8,8 @@ If you have less than 6 boomboxes the script will try to dupe them for you.
 Credits to 0866 for the midi player 
 (note: put midi files you wanna play into the midi folder located in your exploit's workspace folder)
 
+Credits to AnthonyIsntHere for some tips for improvement
+
 for some good midis:
 Musescore: https://musescore.com/
 Musescore downloader extension: https://github.com/ingui-n/musescore-downloader/tree/master
@@ -434,6 +436,7 @@ CapsButtonConnection = nil;
 TransDnConnection = nil;
 TransUpConnection = nil;
 NewGuiConnection = nil;
+MuteLoopConnection = nil;
 
 function MakeGuiConnections()
 	for i, v in pairs(PianoGui.Keys:GetChildren()) do
@@ -450,6 +453,7 @@ function MakeGuiConnections()
 	MuteButton.Name = "MuteButton"
 	MuteButton.Text = "Mute"
 	MuteButton.Position = UDim2.new(0,10,0,15)
+	MuteButton.TextColor3 = Color3.fromRGB(255,0,0)
 	MuteButton.Parent = PianoGui
 
 	ExitButtonConnection = PianoGui.ExitButton.InputBegan:connect(ExitButtonPressed)
@@ -483,7 +487,10 @@ function MakeGuiConnections()
 		end
 	end)
 
-	MuteButton.MouseButton1Click:connect(function()
+
+	local muteLoopToggle = false
+	MuteLoopConnection = game:GetService("RunService").Heartbeat:Connect(function()
+		if not muteLoopToggle then return end
 		for i,v in pairs(game.Players:GetPlayers()) do
 			if i == 1 then continue end
 			local c = v.Character
@@ -497,6 +504,10 @@ function MakeGuiConnections()
 				end
 			end 
 		end
+	end)
+	MuteButton.MouseButton1Click:connect(function()
+		muteLoopToggle = not muteLoopToggle
+		MuteButton.TextColor3 = (MuteButton.TextColor3 == Color3.fromRGB(255,0,0) and Color3.fromRGB(0,255,0)) or Color3.fromRGB(255,0,0)
 	end)
 
 	TransDnConnection = PianoGui.TransDnButton.MouseButton1Click:connect(function()
@@ -525,6 +536,7 @@ function BreakGuiConnections()
 	ExitButtonConnection:disconnect()
 	SheetsButtonConnection:disconnect()
 	CapsButtonConnection:disconnect()
+	MuteLoopConnection:disconnect()
 	if MidiGui then
 		MidiGui.Enabled = false
 	end
@@ -581,16 +593,20 @@ local function playSound(bb, sound, timepos)
 		audio = bb.Handle:FindFirstChild("Sound")
 	end
 	audio.TimePosition = timepos
-	audio:Resume()
+	--audio:Resume()
+	task.wait()
+	audio.Playing = true
 	local stopcon;stopcon = audio.DidLoop:Connect(function()
-		audio:Pause()
+		--audio:Pause()
+		audio.Playing = false
 		stopcon:Disconnect()
 	end)
 	table.insert(ForceStopConnections, stopcon)
 	task.spawn(function()
 		task.wait(5)
 		if os.clock() - sound.lastPlayed >= 5 then
-			audio:Pause()
+			--audio:Pause()
+			audio.Playing = false
 		end
 	end)
 end

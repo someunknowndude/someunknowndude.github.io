@@ -600,6 +600,7 @@ for i = 1,6 do
 end
 
 print(#noteBoomboxes)
+print(#boomboxes)
 
 local oldpos = Character.HumanoidRootPart.CFrame
 Character.HumanoidRootPart.CFrame = CFrame.new(1000,99999999,10000)

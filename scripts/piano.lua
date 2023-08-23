@@ -323,7 +323,7 @@ function ShowSheets()
 	)
 end
 function HideSheets()
-	if not SheetsGui:IsDescendantOf(game) then return
+	if not SheetsGui:IsDescendantOf(game) then return end
 	SheetsGui:TweenPosition(
 		UDim2.new(0.492, -200, 1, 1),
 		Enum.EasingDirection.Out,

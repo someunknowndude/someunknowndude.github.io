@@ -39,7 +39,7 @@ local boomboxes = {}
 local function findBoomboxes(parent)
 	for i,v in pairs(parent:GetChildren()) do
 		local partName = v.Name:lower():gsub(" ","")
-		if v:IsA("Tool") and (partName:find("boombox") or partName:find("radio")) then
+		if v:IsA("Tool") and (partName:find("boombox") or partName:find("radio")) and not table.find(boomboxes, v) then
 			table.insert(boomboxes, v)
 		end
 	end
@@ -82,7 +82,7 @@ if bbAmount < 6 then
 		Player.CharacterAdded:Wait()
 	end
 
-	for i = 1, 6 - ((bbAmount > 0 and bbAmount) or 0) do
+	for i = 1, 6 - (bbAmount) do
 		dupe(i)
 	end
 	
@@ -599,8 +599,6 @@ for i = 1,6 do
 	noteBoomboxes[i].Parent = Character
 end
 
-print(#noteBoomboxes)
-print(#boomboxes)
 
 local oldpos = Character.HumanoidRootPart.CFrame
 Character.HumanoidRootPart.CFrame = CFrame.new(1000,99999999,10000)

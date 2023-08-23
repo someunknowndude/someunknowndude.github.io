@@ -438,6 +438,8 @@ TransUpConnection = nil;
 NewGuiConnection = nil;
 MuteLoopConnection = nil;
 
+local muteLoopToggle = false
+
 function MakeGuiConnections()
 	for i, v in pairs(PianoGui.Keys:GetChildren()) do
 		PianoKeysConnections[i] = v.InputBegan:connect(function(Object) PianoKeyPressed(Object, tonumber(v.Name)) end)
@@ -488,7 +490,7 @@ function MakeGuiConnections()
 	end)
 
 
-	local muteLoopToggle = false
+	
 	MuteLoopConnection = game:GetService("RunService").Heartbeat:Connect(function()
 		if not muteLoopToggle then return end
 		for i,v in pairs(game.Players:GetPlayers()) do
@@ -537,6 +539,7 @@ function BreakGuiConnections()
 	SheetsButtonConnection:disconnect()
 	CapsButtonConnection:disconnect()
 	MuteLoopConnection:disconnect()
+	muteLoopToggle = false
 	if MidiGui then
 		MidiGui.Enabled = false
 	end
@@ -596,13 +599,28 @@ local function playSound(bb, sound, timepos)
 	--audio:Resume()
 	task.wait()
 	audio.Playing = true
-	local stopcon;stopcon = audio.DidLoop:Connect(function()
-		--audio:Pause()
-		audio.Playing = false
-		stopcon:Disconnect()
-	end)
+	--  local stopcon;stopcon = audio.DidLoop:Connect(function()
+	--  	--audio:Pause()
+	--  	audio.Playing = false
+	--  	stopcon:Disconnect()
+	--  end)
 	table.insert(ForceStopConnections, stopcon)
 	task.spawn(function()
+		local function shortSoundCheck()
+			local remainingSeconds = audio.TimeLength - audio.TimePosition 
+			if remainingSeconds < 5 then
+				task.wait(remainingSeconds - 0.05)
+				if audio.TimeLength - audio.TimePosition < 0.1 then
+					audio.Playing = false
+				else
+					shortSoundCheck()
+				end
+			end
+		end 
+		if audio.TimeLength - audio.TimePosition < 5 then
+			shortSoundCheck()
+			return
+		end
 		task.wait(5)
 		if os.clock() - sound.lastPlayed >= 5 then
 			--audio:Pause()

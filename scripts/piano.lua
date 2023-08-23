@@ -599,6 +599,8 @@ for i = 1,6 do
 	noteBoomboxes[i].Parent = Character
 end
 
+print(#noteBoomboxes)
+
 local oldpos = Character.HumanoidRootPart.CFrame
 Character.HumanoidRootPart.CFrame = CFrame.new(1000,99999999,10000)
 

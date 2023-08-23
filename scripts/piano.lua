@@ -609,8 +609,8 @@ local function playSound(bb, sound, timepos)
 		local function shortSoundCheck()
 			local remainingSeconds = audio.TimeLength - audio.TimePosition 
 			if remainingSeconds < 5 then
-				task.wait(remainingSeconds - 0.05)
-				if audio.TimeLength - audio.TimePosition < 0.1 then
+				task.wait(remainingSeconds - 0.1)
+				if audio.TimeLength - audio.TimePosition < 0.15 then
 					audio.Playing = false
 				else
 					shortSoundCheck()

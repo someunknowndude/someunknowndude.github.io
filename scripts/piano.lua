@@ -429,7 +429,7 @@ end
 ----------------------------------
 
 PianoKeysConnections = {};
---ForceStopConnections = {};
+ForceStopConnections = {};
 ExitButtonConnection = nil;
 SheetsButtonConnection = nil;
 CapsButtonConnection = nil;
@@ -531,9 +531,9 @@ function BreakGuiConnections()
 	for i, v in pairs(PianoKeysConnections) do
 		v:disconnect()
 	end
-	-- for i,v in pairs(ForceStopConnections) do
-	-- 	v:disconnect()
-	-- end
+	 for i,v in pairs(ForceStopConnections) do
+	 	v:disconnect()
+	 end
 	NewGuiConnection:disconnect()
 	ExitButtonConnection:disconnect()
 	SheetsButtonConnection:disconnect()
@@ -599,12 +599,12 @@ local function playSound(bb, sound, timepos)
 	--audio:Resume()
 	task.wait()
 	audio.Playing = true
-	--  local stopcon;stopcon = audio.DidLoop:Connect(function()
-	--  	--audio:Pause()
-	--  	audio.Playing = false
-	--  	stopcon:Disconnect()
-	--  end)
-	--table.insert(ForceStopConnections, stopcon)
+	  local stopcon;stopcon = audio.DidLoop:Connect(function()
+	  	--audio:Pause()
+	  	audio.Playing = false
+	  	stopcon:Disconnect()
+	  end)
+	table.insert(ForceStopConnections, stopcon)
 	task.spawn(function()
 		local function shortSoundCheck()
 			local remainingSeconds = audio.TimeLength - audio.TimePosition 

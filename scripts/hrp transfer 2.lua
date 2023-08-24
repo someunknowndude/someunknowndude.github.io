@@ -17,7 +17,7 @@ local partSelection = {
 	cf = nil
 }
 
-local partsFolder = Instance.new("Folder",workspace)
+local partsFolder = workspace:FindFirstChild("Spawned Parts") or Instance.new("Folder",workspace)
 partsFolder.Name = "Spawned Parts"
 
 local buildParts = { -- editing this will cause desync with other users
@@ -50,8 +50,28 @@ local buildParts = { -- editing this will cause desync with other users
 			part.Anchored = true
 			part.Shape = "Ball"
 			part.Size = Vector3.new(4,4,4)
+			part.Material = "SmoothPlastic"
 			part.Parent = model
 
+			model.PrimaryPart = part
+			model:PivotTo(cf)
+			return model
+		end
+	},
+	{
+		name = "50x50 Plate",
+		func = function(self, cf)
+			local part = Instance.new("Part")
+			part.Anchored = true
+			part.CanCollide = true
+			part.Transparency = 0
+			part.Color = Color3.fromRGB(31, 128, 29)
+			part.Size = Vector3.new(50,1,50)
+			local model = Instance.new("Model")
+			model.Name = self.name
+			model.Parent = partsFolder
+
+			part.Parent = model
 			model.PrimaryPart = part
 			model:PivotTo(cf)
 			return model
@@ -180,13 +200,11 @@ end
 
 local function partToModel(part)
 	if not part or not part.Parent then return end
-	for i,v in pairs(partsFolder:GetChildren()) do
-		if not v:IsA("Model") then continue end
-		if v == part.Parent then
-			return v
-		else
-			partToModel(part.Parent)
-		end
+	if part.Parent.Name == "Spawned Parts" then
+		return part
+	else
+		print(part.Parent.Name)
+		return partToModel(part.Parent)
 	end
 end
 
@@ -227,9 +245,6 @@ local function listen(char)
 	local selectedPart
 	local enoughTimePassed
 	local connection
-	-- lp.Character.Humanoid.Died:Connect(function()
-	--     connection:Disconnect()
-	-- end)
 	connection = game:GetService("RunService").PreRender:Connect(function()
 		if not hrp then connection:Disconnect() end
 		local cf = hrp.CFrame
@@ -268,7 +283,6 @@ local function listen(char)
 			else
 				probes += 1
 				positionSum += hrp.Position
-				print("getting probe")
 			end
 			return 
 		end
@@ -294,7 +308,8 @@ local function listen(char)
 					probes = 0
 					local hrpRotation = hrp.Orientation
 					local averageCFrame = CFrame.new(positionSum/10) * CFrame.Angles(math.rad(hrpRotation.X),math.rad(hrpRotation.Y),math.rad(hrpRotation.Z))
-					selectedPart.func(selectedPart, averageCFrame)
+					local spawned = selectedPart.func(selectedPart, averageCFrame)
+					spawned.Name = "[" .. char.Name .. "] " .. spawned.Name
 					print("Part placed by", char.Name , ", Stream reset")
 					positionSum = Vector3.zero
 				else
@@ -408,7 +423,7 @@ local function giveBtools()
 
 			local foundPart
 			for i,v in pairs(buildParts) do
-				if v.name == partModel.Name then
+				if partModel.Name:find(v.name) then
 					foundPart = v
 					break
 				end
@@ -448,18 +463,26 @@ local function giveBtools()
 	deleteTool.Parent = lp.Backpack
 	deleteTool.TextureId = "rbxassetid://14808588"
 
+	deleteTool.Equipped:Connect(function()
+
+	end)
+
 	deleteTool.Activated:Connect(function()
 		if debounce then return end
 		local selection = mouse.Target
-		if selection and selection:IsDescendantOf(partsFolder) and selection.Parent:IsA("Model") and selection.Parent.PrimaryPart == selection then
+		if selection then
+			local partModel = partToModel(selection)
+			if not partModel then return end 
 			debounce = true
+			local modelCFrame = partModel.PrimaryPart.CFrame
+			print(partModel)
 			getBodyParts()
 			oldPosition = lphrp.CFrame
 			lphum.PlatformStand = true
 			position(lpDeleteSignal,0.2)
 			noclipToggle = true
 			for i = 1,50 do
-				lphrp.CFrame = selection.CFrame
+				lphrp.CFrame = modelCFrame
 				task.wait(0.01)
 			end
 			noclipToggle = false
@@ -488,7 +511,7 @@ local function giveBtools()
 			for i,v in pairs(preview:GetDescendants()) do
 				if v:IsA("BasePart") then
 					v.CastShadow = false
-					v.Transparency = 0.75
+					v.Transparency = 0.5
 					v.CanCollide = false
 				end
 			end

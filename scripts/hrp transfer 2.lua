@@ -1,8 +1,29 @@
 -- made by quirky anime boy. Discord: smokedoutlocedout
 
-local startSignal = Vector3.new(123123,6969,123123)
-local deleteSignal = Vector3.new(0,8000, 133769)
+--[[
 
+Keybinds:
+[Q]/[E] - Down/Up offset
+[R]/[T] - Rotate/Tilt
+[G] - Toggle grid snapping
+
+Commands (any prefix works, adding no arguments will return the setting to default value):
+[rj] - rejoin the server
+[gridsize (size)] - changes the grid size to (size)
+
+(DEBUG COMMANDS:)
+[time (seconds)] = change wait times between signals to (seconds)
+[checkrange (range)] = change size of the area around a signal that gets checked for hrp position to (range)
+
+
+--]]
+
+local signals = {
+	start = Vector3.new(123123,6969,12313),
+	delete = Vector3.new(0,8000, 13376),
+    textStart = Vector3.new(6000, 9500, 691337),
+    textEnd = Vector3.new(3000,8069, 12060)
+}
 
 local players = game:GetService("Players")
 local lp = players.LocalPlayer
@@ -203,7 +224,6 @@ local function partToModel(part)
 	if part.Parent.Name == "Spawned Parts" then
 		return part
 	else
-		print(part.Parent.Name)
 		return partToModel(part.Parent)
 	end
 end
@@ -215,9 +235,58 @@ local function snapToGrid(pos, Grid, modelSize)  -- Position and ModelSize
 	return Vector3.new(X,Y,Z) 
 end
 
+local function stringToInteger(str)
+	if #str > 5 then return print("string must be 5 characters or less") end
+	local resultString = ""
+	for i = 1, #str do
+		local char = str:sub(i, i)
+		local byte = char:byte()
+		local buffer = string.rep("0",3-#tostring(byte))
+		resultString ..= buffer .. byte
+	end
+	local res = tonumber("1" .. resultString ..  "50") -- prepend 1 to retain potential first buffer, append 50 as end buffer to account for hrp imprecision
+	return res
+end
+
+local function encodeMessage(msg)
+	local vector3s = {}
+	for newVector = 1, #msg, 3 do -- split message into multiple vectors to return
+		local msg = msg:sub(newVector, newVector + 3)
+		local values = {}
+		for chunk = 1, #msg  do -- split into 3 chunks of 5 for the Vector3 values
+			local charsPair = msg:sub(chunk, chunk)
+			local int = stringToInteger(charsPair)
+			table.insert(values, int)
+		end
+		local xValue, yValue, zValue = values[1] or 199, values[2] or 199, values[3] or 199
+		local vector3 = Vector3.new(xValue,yValue,zValue)
+		table.insert(vector3s, vector3)
+	end
+	return vector3s
+end
+
+local function decodeMessage(packets)
+	local result = ""
+	for i,packet in pairs(packets) do
+	local chunks = {packet.X,packet.Y,packet.Z}
+		for i,v in pairs(chunks) do
+			local noBuffers = tostring(v):sub(2,-3)
+			if noBuffers ~= "" then
+				local decoded = string.char(tonumber(noBuffers)) 
+				result ..= decoded
+			end
+		end
+	end
+	--print("result:",result)
+	return result
+end
+
 local lpOffset = uniqueOffset(lp)
-local lpStartSignal = startSignal + lpOffset
-local lpDeleteSignal = deleteSignal + lpOffset
+local lpSignals = {}
+	
+for i,v in pairs(signals) do
+	lpSignals[i] = v + lpOffset
+end
 
 local noclipToggle = false
 local noclipLoop = game:GetService("RunService").Stepped:Connect(function()
@@ -229,17 +298,28 @@ local noclipLoop = game:GetService("RunService").Stepped:Connect(function()
 	end
 end)
 
+
+
+local function processText(packets, char, hrpCF)
+    print("MESSAGE RECEIVED:", decodeMessage(packets))
+end
+
 local function listen(char)
 	--print("listening on character", char.Name)
 	local hrp = char:WaitForChild("HumanoidRootPart",5)
 	if not hrp then return end
 
 	local plrOffset = uniqueOffset(game.Players[char.Name])
-	local startSignal =  startSignal + plrOffset
-	local deleteSignal = deleteSignal + plrOffset
+	local plrSignals = {}
+	
+	for i,v in pairs(signals) do
+		plrSignals[i] = v + plrOffset
+	end
 
 	local probes = 0
 	local positionSum = Vector3.zero
+    
+    local textPackets = {}
 
 	local entry = playerList[char.Name]
 	local selectedPart
@@ -251,42 +331,14 @@ local function listen(char)
 		local pos = cf.Position
 		local state = entry["state"]
 
-		if state == "none" and checkPosition(pos,startSignal,settings.checkRange) then
+        -- start build stream
+		if state == "none" and checkPosition(pos,plrSignals.start,settings.checkRange) then
 			entry["state"] = "started"
 			print("Stream was started")
 			return
 		end
 
-		if state == "none" and checkPosition(pos,deleteSignal,settings.checkRange) then
-			entry["state"] = "deleting"
-			print("Destroy begun")
-			task.wait(settings.customTime + 0.05)
-			enoughTimePassed = true
-			return
-		end
-
-		if state == "deleting" and enoughTimePassed then
-			if probes == 10 then
-				entry["state"] = "none"
-				enoughTimePassed = false
-				probes = 0
-				local averagePosition = CFrame.new(positionSum/10)
-				for i,v in pairs(partsFolder:GetChildren()) do
-					if table.find({"Start signal platform", "Build tool platform", "Delete tool platform"},v.Name) then continue end
-					if checkPosition(averagePosition.Position, v.PrimaryPart.Position ,1.5) then
-						v:Destroy()
-						print(char.Name .. " destroyed " .. v.Name)
-						enoughTimePassed = false
-					end
-				end
-				positionSum = Vector3.zero
-			else
-				probes += 1
-				positionSum += hrp.Position
-			end
-			return 
-		end
-
+        -- select build part
 		if state == "started" then
 			for i,v in pairs(buildParts) do
 				if checkPosition(pos, v.signal + plrOffset,settings.checkRange) then
@@ -300,6 +352,7 @@ local function listen(char)
 			end
 		end
 
+        -- place part
 		if state == "selected" and enoughTimePassed then
 			if enoughTimePassed then
 				if probes == 10 then
@@ -319,6 +372,68 @@ local function listen(char)
 				return
 			end
 		end
+        
+        -- start delete stream
+		if state == "none" and checkPosition(pos,plrSignals.delete,settings.checkRange) then
+			entry["state"] = "deleting"
+			print("Destroy begun")
+			task.wait(settings.customTime + 0.05)
+			enoughTimePassed = true
+			return
+		end
+
+        -- delete parts
+		if state == "deleting" and enoughTimePassed then
+			if probes == 10 then
+				entry["state"] = "none"
+				enoughTimePassed = false
+				probes = 0
+				local averagePosition = CFrame.new(positionSum/10)
+				for i,v in pairs(partsFolder:GetChildren()) do
+					if v.Name:find("signal platform") then continue end
+					if checkPosition(averagePosition.Position, v.PrimaryPart.Position ,1.5) then
+						v:Destroy()
+						print(char.Name .. " destroyed " .. v.Name)
+					end
+				end
+				positionSum = Vector3.zero
+			else
+				probes += 1
+				positionSum += hrp.Position
+			end
+			return 
+		end
+        
+        -- start text stream
+		if state == "none" and checkPosition(pos,plrSignals.textStart,settings.checkRange) then
+			entry["state"] = "text started"
+			print("text stream begun")
+            textPackets = {}
+            task.wait(settings.customTime + 0.05)
+			enoughTimePassed = true
+			return
+		end
+
+        -- read text packets
+        if state == "text started" and enoughTimePassed then
+            enoughTimePassed = false
+			--entry["state"] = "sending text"
+            local packet  = hrp.Position
+            table.insert(textPackets, packet)
+            print("text packet sent", packet)
+            task.wait(settings.customTime + 0.05)
+            enoughTimePassed = true
+			return
+		end
+
+        -- end text stream
+		if state == "text started" and checkPosition(pos,plrSignals.textEnd,settings.checkRange) and enoughTimePassed then
+			entry["state"] = "none"
+            enoughTimePassed = false
+			print("text stream ended")
+            processText(textPackets, char, hrp.CFrame)
+			return
+		end
 	end)
 end
 
@@ -331,15 +446,15 @@ local function position(position, waitTime)
 	end
 end
 
-local function startStream()
+local function startStream(signal)
 	getBodyParts()
 	oldPosition = lphrp.CFrame
 	lphum.PlatformStand = true
-	position(lpStartSignal,0.2)
+	position(signal,0.2)
 end
 
 local function endStream()
-	lphrp.CFrame = oldPosition
+    lphrp.CFrame = oldPosition
 	noclipToggle = false
 	lphum.PlatformStand = false
 end
@@ -428,7 +543,7 @@ local function giveBtools()
 					break
 				end
 			end
-			startStream()
+			startStream(lpSignals.start)
 			position(foundPart.signal + lpOffset, .2)
 			noclipToggle = true
 			for i = 1,50 do
@@ -442,7 +557,7 @@ local function giveBtools()
 		else
 			if debounce or partSelection.num == nil or partSelection.cf == nil then return end
 			debounce = true
-			startStream()
+			startStream(lpSignals.start)
 			position(buildParts[partSelection.num].signal + lpOffset, .2)
 			noclipToggle = true
 			for i = 1,50 do
@@ -463,10 +578,6 @@ local function giveBtools()
 	deleteTool.Parent = lp.Backpack
 	deleteTool.TextureId = "rbxassetid://14808588"
 
-	deleteTool.Equipped:Connect(function()
-
-	end)
-
 	deleteTool.Activated:Connect(function()
 		if debounce then return end
 		local selection = mouse.Target
@@ -475,11 +586,10 @@ local function giveBtools()
 			if not partModel then return end 
 			debounce = true
 			local modelCFrame = partModel.PrimaryPart.CFrame
-			print(partModel)
 			getBodyParts()
 			oldPosition = lphrp.CFrame
 			lphum.PlatformStand = true
-			position(lpDeleteSignal,0.2)
+			position(lpSignals.delete,0.2)
 			noclipToggle = true
 			for i = 1,50 do
 				lphrp.CFrame = modelCFrame
@@ -552,7 +662,7 @@ local function giveBtools()
 			partSelection.num = i
 			partSelection.cf = preview.PrimaryPart.CFrame
 
-			startStream()
+			startStream(lpSignals.start)
 			position(v.signal + lpOffset, .2)
 			noclipToggle = true
 			for i = 1,50 do
@@ -571,11 +681,12 @@ giveBtools()
 lp.CharacterAdded:Connect(giveBtools)
 
 
-spawnPart(lpStartSignal - Vector3.new(0,1,0)).Name = "Start signal platform"
-spawnPart(lpDeleteSignal - Vector3.new(0,1,0)).Name = "Delete tool platform"
+for i,v in pairs(lpSignals) do
+	spawnPart(v - Vector3.new(0,1,0)).Name = i .. " signal platform"
+end
 
 for i,v in pairs(buildParts) do
-	spawnPart(v.signal + lpOffset - Vector3.new(0,1,0)).Name = "Build tool platform"
+	spawnPart(v.signal + lpOffset - Vector3.new(0,1,0)).Name = v.name .. " signal platform"
 end
 
 
@@ -598,12 +709,35 @@ addCommand("rj",function()
 	game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, game.JobId)
 end)
 
+addCommand("gridsize", function(newSize)
+    settings.snapValue = tonumber(newSize) or 1
+end)
+
 addCommand("time", function(newTime)
-	settings.customTime = tonumber(newTime)
+	settings.customTime = tonumber(newTime) or 0.5
 end)
 
 addCommand("checkrange", function(newRange)
-	settings.checkRange = tonumber(newRange)
+	settings.checkRange = tonumber(newRange) or 2
+end)
+
+addCommand("text", function(...)
+    local args = {...}
+    local message = ""
+    for i,v in pairs(args) do
+        message ..= " " .. v
+    end
+    message = message:sub(1,-2)
+    local encoded = encodeMessage(message)
+	startStream(lpSignals.textStart)  
+    for i,v in pairs(encoded) do
+        for n = 1,50 do
+            lphrp.CFrame = CFrame.new(v)
+            task.wait(0.01)
+        end
+    end
+    position(lpSignals.textEnd, .6)
+    endStream()
 end)
 
 notify("HRPBtools loaded!", "Check bottom of the script source for all commands and keybinds.", 3)

@@ -778,6 +778,8 @@ addCommand("checkrange", function(newRange)
 end)
 
 addCommand("text", function(...)
+    if debounce then return end
+    debounce = true
 	local args = {...}
 	local message = ""
 	for i,v in pairs(args) do
@@ -800,6 +802,8 @@ addCommand("text", function(...)
 	endStream()
     setLoading(false)
     lphrp.CFrame = oldPos
+    task.wait()
+    debounce = false 
 end)
 
 notify("HRPBtools loaded!", "Check bottom of the script source for all commands and keybinds.", 3)

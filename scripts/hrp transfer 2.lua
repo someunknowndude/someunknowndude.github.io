@@ -312,8 +312,8 @@ local function decodeMessage(packets)
 end
 
 local function setLoading(bool)
-    camera.CameraType = bool and "Fixed" or Enum.CameraType.Custom
-    loadingPart.CFrame = lphrp.CFrame
+    camera.CameraSubject = bool and loadingPart or lphum
+    loadingPart.CFrame = lphrp.CFrame - Vector3.new(0,0.5,0)
     loadingPart.Transparency = bool and 0.25 or 1 
 end
 

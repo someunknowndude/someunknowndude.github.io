@@ -21,25 +21,40 @@ Commands (any prefix works, adding no arguments will return the setting to defau
 local signals = {
 	start = Vector3.new(123123,6969,12313),
 	delete = Vector3.new(0,8000, 13376),
-    textStart = Vector3.new(6000, 9500, 691337),
-    textEnd = Vector3.new(3000,8069, 12060)
+	textStart = Vector3.new(6000, 9500, 691337),
+	textEnd = Vector3.new(3000,8069, 12060)
 }
 
 local players = game:GetService("Players")
 local lp = players.LocalPlayer
+local previewHolder = Instance.new("Model")
 local mouse = lp:GetMouse()
+mouse.TargetFilter = previewHolder 
+local camera = workspace.CurrentCamera
 local playerList = {}
 local lphrp
 local lphum
 local oldPosition
 
+local partsFolder = workspace:FindFirstChild("Spawned Parts") or Instance.new("Folder",workspace)
+partsFolder.Name = "Spawned Parts"
+previewHolder.Name = "Preview part holder"
+previewHolder.Parent = partsFolder
+
+local loadingPart = Instance.new("Part")
+loadingPart.Transparency = 1
+loadingPart.Size = Vector3.new(2,2,1)
+loadingPart.Material = "Neon"
+loadingPart.Anchored = true
+loadingPart.Name = "Character loading part"
+loadingPart.CanCollide = false
+loadingPart.Color = Color3.fromRGB(0, 153, 255)
+loadingPart.Parent = previewHolder
+
 local partSelection = {
 	num = nil,
 	cf = nil
 }
-
-local partsFolder = workspace:FindFirstChild("Spawned Parts") or Instance.new("Folder",workspace)
-partsFolder.Name = "Spawned Parts"
 
 local buildParts = { -- editing this will cause desync with other users
 	{
@@ -127,6 +142,14 @@ local buildParts = { -- editing this will cause desync with other users
 		end
 	}
 }
+
+
+local gameBlacklist = {"Roblox House"}
+for i,v in pairs(buildParts) do
+    if table.find(gameBlacklist, v.name) then
+        table.remove(buildParts, i)
+    end
+end
 
 local function notify(header, text, duration)
 	game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -235,8 +258,10 @@ local function snapToGrid(pos, Grid, modelSize)  -- Position and ModelSize
 	return Vector3.new(X,Y,Z) 
 end
 
+local counter = 0
 local function stringToInteger(str)
 	if #str > 5 then return print("string must be 5 characters or less") end
+    counter += 1
 	local resultString = ""
 	for i = 1, #str do
 		local char = str:sub(i, i)
@@ -244,7 +269,7 @@ local function stringToInteger(str)
 		local buffer = string.rep("0",3-#tostring(byte))
 		resultString ..= buffer .. byte
 	end
-	local res = tonumber("1" .. resultString ..  "50") -- prepend 1 to retain potential first buffer, append 50 as end buffer to account for hrp imprecision
+	local res = tonumber(tostring((counter%9)+1) .. resultString ..  "50") -- prepend number to retain potential first buffer, append 50 as end buffer to account for hrp imprecision
 	return res
 end
 
@@ -268,12 +293,17 @@ end
 local function decodeMessage(packets)
 	local result = ""
 	for i,packet in pairs(packets) do
-	local chunks = {packet.X,packet.Y,packet.Z}
+        print("decoding vector: " .. tostring(packet))
+		local chunks = {packet.X,packet.Y,packet.Z}
 		for i,v in pairs(chunks) do
-			local noBuffers = tostring(v):sub(2,-3)
+			local noBuffers = tostring(math.floor(v)):sub(2,-3)
+			print("raw packet:", tostring(math.floor(v)), "bufferless packet:", noBuffers)
 			if noBuffers ~= "" then
-				local decoded = string.char(tonumber(noBuffers)) 
+				local s,e = pcall(function()
+                local decoded = string.char(tonumber(noBuffers)) 
 				result ..= decoded
+                end)
+                if not s then print(e) end
 			end
 		end
 	end
@@ -281,9 +311,16 @@ local function decodeMessage(packets)
 	return result
 end
 
+local function setLoading(bool)
+    camera.CameraType = bool and "Fixed" or Enum.CameraType.Custom
+    loadingPart.CFrame = lphrp.CFrame
+    loadingPart.Transparency = bool and 0.25 or 1 
+end
+
+
 local lpOffset = uniqueOffset(lp)
 local lpSignals = {}
-	
+
 for i,v in pairs(signals) do
 	lpSignals[i] = v + lpOffset
 end
@@ -301,7 +338,7 @@ end)
 
 
 local function processText(packets, char, hrpCF)
-    print("MESSAGE RECEIVED:", decodeMessage(packets))
+	print("MESSAGE RECEIVED:", decodeMessage(packets))
 end
 
 local function listen(char)
@@ -311,15 +348,15 @@ local function listen(char)
 
 	local plrOffset = uniqueOffset(game.Players[char.Name])
 	local plrSignals = {}
-	
+
 	for i,v in pairs(signals) do
 		plrSignals[i] = v + plrOffset
 	end
 
 	local probes = 0
 	local positionSum = Vector3.zero
-    
-    local textPackets = {}
+
+	local textPackets = {}
 
 	local entry = playerList[char.Name]
 	local selectedPart
@@ -331,14 +368,14 @@ local function listen(char)
 		local pos = cf.Position
 		local state = entry["state"]
 
-        -- start build stream
+		-- start build stream
 		if state == "none" and checkPosition(pos,plrSignals.start,settings.checkRange) then
 			entry["state"] = "started"
 			print("Stream was started")
 			return
 		end
 
-        -- select build part
+		-- select build part
 		if state == "started" then
 			for i,v in pairs(buildParts) do
 				if checkPosition(pos, v.signal + plrOffset,settings.checkRange) then
@@ -352,7 +389,7 @@ local function listen(char)
 			end
 		end
 
-        -- place part
+		-- place part
 		if state == "selected" and enoughTimePassed then
 			if enoughTimePassed then
 				if probes == 10 then
@@ -372,8 +409,8 @@ local function listen(char)
 				return
 			end
 		end
-        
-        -- start delete stream
+
+		-- start delete stream
 		if state == "none" and checkPosition(pos,plrSignals.delete,settings.checkRange) then
 			entry["state"] = "deleting"
 			print("Destroy begun")
@@ -382,7 +419,7 @@ local function listen(char)
 			return
 		end
 
-        -- delete parts
+		-- delete parts
 		if state == "deleting" and enoughTimePassed then
 			if probes == 10 then
 				entry["state"] = "none"
@@ -390,8 +427,8 @@ local function listen(char)
 				probes = 0
 				local averagePosition = CFrame.new(positionSum/10)
 				for i,v in pairs(partsFolder:GetChildren()) do
-					if v.Name:find("signal platform") then continue end
-					if checkPosition(averagePosition.Position, v.PrimaryPart.Position ,1.5) then
+					if not v.Name:find("[",1,true) then continue end
+					if checkPosition(averagePosition.Position, v.PrimaryPart.Position,1.5) then
 						v:Destroy()
 						print(char.Name .. " destroyed " .. v.Name)
 					end
@@ -403,35 +440,38 @@ local function listen(char)
 			end
 			return 
 		end
-        
-        -- start text stream
+
+		-- start text stream
 		if state == "none" and checkPosition(pos,plrSignals.textStart,settings.checkRange) then
 			entry["state"] = "text started"
 			print("text stream begun")
-            textPackets = {}
-            task.wait(settings.customTime + 0.05)
+			--textPackets = {}
+			task.wait(settings.customTime + 0.05)
 			enoughTimePassed = true
 			return
 		end
 
-        -- read text packets
-        if state == "text started" and enoughTimePassed then
-            enoughTimePassed = false
-			--entry["state"] = "sending text"
-            local packet  = hrp.Position
+		-- read text packets
+		if state == "text started" and enoughTimePassed then
+			local packet  = hrp.Position
+            entry["state"] = "none"
+            --if (#textPackets > 0 and checkPosition(textPackets[#textPackets], packet, settings.checkRange)) then return end
+			enoughTimePassed = false
             table.insert(textPackets, packet)
-            print("text packet sent", packet)
-            task.wait(settings.customTime + 0.05)
-            enoughTimePassed = true
+			print("text packet sent", packet)
+			-- task.wait(settings.customTime)
+            -- if state ~= "text started" then return end
+			-- enoughTimePassed = true
 			return
 		end
 
-        -- end text stream
-		if state == "text started" and checkPosition(pos,plrSignals.textEnd,settings.checkRange) and enoughTimePassed then
-			entry["state"] = "none"
-            enoughTimePassed = false
-			print("text stream ended")
-            processText(textPackets, char, hrp.CFrame)
+		-- end text stream
+		if state == "none" and checkPosition(pos,plrSignals.textEnd,settings.checkRange) and #textPackets > 0 then
+			--entry["state"] = "none"
+			enoughTimePassed = false
+			processText(textPackets, char, hrp.CFrame)
+            print("text stream ended")
+            textPackets = {}
 			return
 		end
 	end)
@@ -454,8 +494,10 @@ local function startStream(signal)
 end
 
 local function endStream()
-    lphrp.CFrame = oldPosition
+	lphrp.AssemblyLinearVelocity = Vector3.zero
+	lphrp.CFrame = oldPosition
 	noclipToggle = false
+    task.wait()
 	lphum.PlatformStand = false
 end
 
@@ -543,29 +585,36 @@ local function giveBtools()
 					break
 				end
 			end
+
+            setLoading(true)
 			startStream(lpSignals.start)
 			position(foundPart.signal + lpOffset, .2)
 			noclipToggle = true
 			for i = 1,50 do
+				lphrp.AssemblyLinearVelocity = Vector3.zero
 				lphrp.CFrame = partModel.PrimaryPart.CFrame
 				task.wait(0.01)
 			end
 			noclipToggle = false
 			endStream()
+            setLoading(false)
 			task.wait()
 			debounce = false
 		else
 			if debounce or partSelection.num == nil or partSelection.cf == nil then return end
 			debounce = true
-			startStream(lpSignals.start)
+			setLoading(true)
+            startStream(lpSignals.start)
 			position(buildParts[partSelection.num].signal + lpOffset, .2)
 			noclipToggle = true
 			for i = 1,50 do
+				lphrp.AssemblyLinearVelocity = Vector3.zero
 				lphrp.CFrame = partSelection.cf
 				task.wait(0.01)
 			end
 			noclipToggle = false
 			endStream()
+            setLoading(false)
 			task.wait()
 			debounce = false
 		end
@@ -588,15 +637,18 @@ local function giveBtools()
 			local modelCFrame = partModel.PrimaryPart.CFrame
 			getBodyParts()
 			oldPosition = lphrp.CFrame
-			lphum.PlatformStand = true
+			setLoading(true)
+            lphum.PlatformStand = true
 			position(lpSignals.delete,0.2)
 			noclipToggle = true
 			for i = 1,50 do
+				lphrp.AssemblyLinearVelocity = Vector3.zero
 				lphrp.CFrame = modelCFrame
 				task.wait(0.01)
 			end
 			noclipToggle = false
 			endStream()
+            setLoading(false)
 			task.wait()
 			debounce = false
 		end
@@ -617,7 +669,7 @@ local function giveBtools()
 		buildTool.Equipped:Connect(function()
 			preview = v.func(v,CFrame.new(0,0,0))
 			preview.Name = "Preview Model"
-			preview.Parent = lp.Character
+			preview.Parent = previewHolder
 			for i,v in pairs(preview:GetDescendants()) do
 				if v:IsA("BasePart") then
 					v.CastShadow = false
@@ -661,25 +713,29 @@ local function giveBtools()
 			debounce = true
 			partSelection.num = i
 			partSelection.cf = preview.PrimaryPart.CFrame
-
+            setLoading(true)
 			startStream(lpSignals.start)
 			position(v.signal + lpOffset, .2)
 			noclipToggle = true
 			for i = 1,50 do
+				lphrp.AssemblyLinearVelocity = Vector3.zero
 				lphrp.CFrame = partSelection.cf
 				task.wait(0.01)
 			end
 			noclipToggle = false
 			endStream()
+            setLoading(false)
 			task.wait()
 			debounce = false
 		end)
 	end
 end
 
+getBodyParts()
+
 giveBtools()
 lp.CharacterAdded:Connect(giveBtools)
-
+lp.CharacterAdded:Connect(getBodyParts)
 
 for i,v in pairs(lpSignals) do
 	spawnPart(v - Vector3.new(0,1,0)).Name = i .. " signal platform"
@@ -710,7 +766,7 @@ addCommand("rj",function()
 end)
 
 addCommand("gridsize", function(newSize)
-    settings.snapValue = tonumber(newSize) or 1
+	settings.snapValue = tonumber(newSize) or 1
 end)
 
 addCommand("time", function(newTime)
@@ -722,22 +778,28 @@ addCommand("checkrange", function(newRange)
 end)
 
 addCommand("text", function(...)
-    local args = {...}
-    local message = ""
-    for i,v in pairs(args) do
-        message ..= " " .. v
-    end
-    message = message:sub(1,-2)
-    local encoded = encodeMessage(message)
-	startStream(lpSignals.textStart)  
+	local args = {...}
+	local message = ""
+	for i,v in pairs(args) do
+		message ..= " " .. v:gsub(" ", "")
+	end
+	message = message:sub(2, -1)
+    print(message)
+	local encoded = encodeMessage(message)
+    local oldPos = lphrp.CFrame
+	setLoading(true)
     for i,v in pairs(encoded) do
-        for n = 1,50 do
-            lphrp.CFrame = CFrame.new(v)
-            task.wait(0.01)
-        end
-    end
-    position(lpSignals.textEnd, .6)
-    endStream()
+        startStream(lpSignals.textStart)  
+		for n = 1,50 do
+			lphrp.AssemblyLinearVelocity = Vector3.zero
+			lphrp.CFrame = CFrame.new(v)
+			task.wait(0.01)
+		end
+	end
+	position(lpSignals.textEnd, .6)
+	endStream()
+    setLoading(false)
+    lphrp.CFrame = oldPos
 end)
 
 notify("HRPBtools loaded!", "Check bottom of the script source for all commands and keybinds.", 3)
